@@ -23,7 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
           </div>
           <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-            蒲偉廷 Tim
+            蒲朝棟 Tim
           </div>
         </header>
         <main className="max-w-2xl mx-auto px-4 py-6">{children}</main>
