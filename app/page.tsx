@@ -1,6 +1,8 @@
 import { getInventory, getTasksMd, getContentCalendar, getOutreachLog, getFinanceReport } from '@/lib/github';
 import { parseTasks } from '@/lib/parse-tasks';
 import { SystemCard } from '@/components/SystemCard';
+import { CommandCenter } from '@/components/CommandCenter';
+import { System } from '@/lib/types';
 
 interface ContentItem {
   date: string;
@@ -14,7 +16,6 @@ function parseItemDate(dateStr: string): Date | null {
   if (!match) return null;
   const now = new Date();
   const d = new Date(now.getFullYear(), parseInt(match[1], 10) - 1, parseInt(match[2], 10));
-  // If date is more than 6 months in the past, it's probably next year
   if (now.getTime() - d.getTime() > 180 * 24 * 60 * 60 * 1000) d.setFullYear(d.getFullYear() + 1);
   return d;
 }
@@ -36,12 +37,12 @@ function parseContentCalendar(md: string): ContentItem[] {
     }
   }
   const now = new Date();
-  const cutoffPast = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);   // 3 天前
-  const cutoffFuture = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 未來 30 天
+  const cutoffPast = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+  const cutoffFuture = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
   return items.filter(i => {
     if (i.date === '-' || i.topic === '-' || i.topic === '') return false;
     const d = parseItemDate(i.date);
-    if (!d) return true; // 無法解析日期則保留
+    if (!d) return true;
     return d >= cutoffPast && d <= cutoffFuture;
   });
 }
@@ -90,11 +91,11 @@ const departments = [
   { dept: '內容部 CNT', role: '內容策略・Threads 規劃・文章' },
   { dept: '社群部 SOC', role: 'LINE@・Threads 數據・粉絲成長' },
   { dept: '業務部 BIZ', role: '合作外展・潛在客戶' },
-  { dept: '知識庫 KM',  role: '方法論・SOP・決策記錄・參考文件' },
+  { dept: '知識庫 KM',  role: '方法論・SOP・決策記錄' },
   { dept: '策略部 STR', role: '組織架構・長期規劃・總管模式' },
   { dept: '財務部 FIN', role: '收入・支出・月淨利・未收款' },
-  { dept: '客戶部 CRM', role: '諮詢記錄・來源追蹤・回訪轉介紹' },
-  { dept: '產品部 PRD', role: '診斷・預約・產品路線圖・轉換率' },
+  { dept: '客戶部 CRM', role: '諮詢記錄・來源追蹤・轉介紹' },
+  { dept: '產品部 PRD', role: '診斷・預約・路線圖・轉換率' },
   { dept: '法務部 LEG', role: '服務條款・隱私政策・合作合約' },
 ];
 
@@ -114,7 +115,7 @@ function typeIcon(type: string) {
 }
 
 export default async function Home() {
-  let systems = [];
+  let systems: System[] = [];
   let tasksMd = '';
   let contentItems: ContentItem[] = [];
   let outreachStats: OutreachStats | null = null;
@@ -135,51 +136,83 @@ export default async function Home() {
   try {
     const calMd = await getContentCalendar();
     contentItems = parseContentCalendar(calMd);
-  } catch {
-    // optional — fail silently
-  }
+  } catch { /* optional */ }
 
   try {
     const outreachMd = await getOutreachLog();
     outreachStats = parseOutreachLog(outreachMd);
-  } catch {
-    // optional — fail silently
-  }
+  } catch { /* optional */ }
 
   try {
     const financeMd = await getFinanceReport();
     financeSummary = parseFinanceReport(financeMd);
-  } catch {
-    // optional — fail silently
-  }
+  } catch { /* optional */ }
 
   const tasks = parseTasks(tasksMd);
   const p1Tasks = tasks.filter(t => t.priority === 'P1' || t.priority === 'P0');
   const p2Tasks = tasks.filter(t => t.priority === 'P2');
   const avgHealth = systems.length
-    ? (systems.reduce((s: number, sys: { health_score: number }) => s + sys.health_score, 0) / systems.length).toFixed(1)
+    ? (systems.reduce((s, sys) => s + sys.health_score, 0) / systems.length).toFixed(1)
     : '0';
+
+  // Live systems with URL for quick links
+  const quickLinks = systems.filter(
+    s => s.url && (s.status === 'live' || s.status === 'active')
+  );
 
   return (
     <div className="space-y-6">
 
       {/* 總覽數字 */}
-      <section id="overview" className="grid grid-cols-3 gap-3">
-        {[
-          { label: '系統總數', value: String(systems.length) },
-          { label: '平均健康', value: avgHealth + '/5' },
-          { label: 'P1 任務', value: String(p1Tasks.length) },
-        ].map(stat => (
-          <div
-            key={stat.label}
-            className="rounded-xl p-4 text-center"
-            style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
-          >
-            <div className="text-2xl font-bold" style={{ color: 'var(--accent)' }}>{stat.value}</div>
-            <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>{stat.label}</div>
+      <section id="overview">
+        <div className="grid grid-cols-3 gap-3 mb-3">
+          {[
+            { label: '系統', value: String(systems.length), icon: '🖥' },
+            { label: '平均健康', value: avgHealth + '/5', icon: '❤️' },
+            { label: 'P1 任務', value: String(p1Tasks.length), icon: '⚡' },
+          ].map(stat => (
+            <div
+              key={stat.label}
+              className="rounded-xl p-4 text-center"
+              style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
+            >
+              <div className="text-lg mb-0.5">{stat.icon}</div>
+              <div className="text-2xl font-bold" style={{ color: 'var(--accent)' }}>
+                {stat.value}
+              </div>
+              <div className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                {stat.label}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* 快速連結 */}
+        {quickLinks.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {quickLinks.map(s => (
+              <a
+                key={s.id}
+                href={s.url!}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-semibold px-3 py-1.5 rounded-full"
+                style={{
+                  backgroundColor: 'var(--bg-card)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text-secondary)',
+                  textDecoration: 'none',
+                }}
+              >
+                {s.short_code} ↗
+              </a>
+            ))}
           </div>
-        ))}
+        )}
       </section>
+
+      {/* 指令中心 */}
+      <CommandCenter />
 
       {/* P1 任務 */}
       <section id="tasks">
@@ -208,7 +241,10 @@ export default async function Home() {
             ))}
           </div>
         ) : (
-          <div className="rounded-xl px-4 py-3 text-sm" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', color: '#22c55e' }}>
+          <div
+            className="rounded-xl px-4 py-3 text-sm"
+            style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', color: '#22c55e' }}
+          >
             ✓ 本週無緊急任務
           </div>
         )}
@@ -216,7 +252,10 @@ export default async function Home() {
         {/* P2 任務 */}
         {p2Tasks.length > 0 && (
           <div className="mt-3">
-            <h3 className="text-xs font-semibold tracking-widest uppercase mb-2 mt-4" style={{ color: 'var(--text-secondary)' }}>
+            <h3
+              className="text-xs font-semibold tracking-widest uppercase mb-2 mt-4"
+              style={{ color: 'var(--text-secondary)' }}
+            >
               本週推進
             </h3>
             <div className="space-y-2">
@@ -229,9 +268,13 @@ export default async function Home() {
                   <span
                     className="text-xs font-bold px-2 py-0.5 rounded mt-0.5 shrink-0"
                     style={{ backgroundColor: '#eab30822', color: '#eab308' }}
-                  >P2</span>
+                  >
+                    P2
+                  </span>
                   <div>
-                    <div className="text-xs font-semibold mb-0.5" style={{ color: 'var(--text-secondary)' }}>{t.system}</div>
+                    <div className="text-xs font-semibold mb-0.5" style={{ color: 'var(--text-secondary)' }}>
+                      {t.system}
+                    </div>
                     <div className="text-sm" style={{ color: 'var(--text-primary)' }}>{t.content}</div>
                   </div>
                 </div>
@@ -241,9 +284,12 @@ export default async function Home() {
         )}
       </section>
 
-      {/* 本週內容排程 */}
+      {/* 近期內容排程 */}
       <section id="content">
-        <h2 className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--text-secondary)' }}>
+        <h2
+          className="text-xs font-semibold tracking-widest uppercase mb-3"
+          style={{ color: 'var(--text-secondary)' }}
+        >
           近期內容排程
         </h2>
         {contentItems.length > 0 ? (
@@ -256,9 +302,15 @@ export default async function Home() {
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="text-base shrink-0">{typeIcon(item.type)}</span>
                   <div className="min-w-0">
-                    <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>{item.date}</span>
-                    <span className="text-xs ml-2" style={{ color: 'var(--text-secondary)' }}>{item.type}</span>
-                    <div className="text-sm truncate" style={{ color: 'var(--text-primary)' }}>{item.topic}</div>
+                    <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                      {item.date}
+                    </span>
+                    <span className="text-xs ml-2" style={{ color: 'var(--text-secondary)' }}>
+                      {item.type}
+                    </span>
+                    <div className="text-sm truncate" style={{ color: 'var(--text-primary)' }}>
+                      {item.topic}
+                    </div>
                   </div>
                 </div>
                 <span
@@ -280,73 +332,96 @@ export default async function Home() {
         )}
       </section>
 
-      {/* 外展進度 */}
-      <section id="outreach">
-        <h2 className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--text-secondary)' }}>
-          外展進度
-        </h2>
-        {outreachStats ? (
-          <div
-            className="rounded-xl px-4 py-3 grid grid-cols-3 gap-4"
-            style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
+      {/* 外展進度 + 財務（並排） */}
+      <div className="grid grid-cols-2 gap-3">
+        <section id="outreach">
+          <h2
+            className="text-xs font-semibold tracking-widest uppercase mb-3"
+            style={{ color: 'var(--text-secondary)' }}
           >
-            {[
-              { label: '累計寄出', value: outreachStats.sent, unit: '封' },
-              { label: '已回覆', value: outreachStats.replied, unit: '封' },
-              { label: '進入洽談', value: outreachStats.negotiating, unit: '組' },
-            ].map(stat => (
-              <div key={stat.label} className="text-center">
-                <div className="text-xl font-bold" style={{ color: 'var(--accent)' }}>
-                  {stat.value}<span className="text-sm ml-0.5">{stat.unit}</span>
+            外展進度
+          </h2>
+          {outreachStats ? (
+            <div
+              className="rounded-xl px-3 py-3 space-y-2"
+              style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', height: 'calc(100% - 28px)' }}
+            >
+              {[
+                { label: '累計寄出', value: outreachStats.sent, unit: '封' },
+                { label: '已回覆', value: outreachStats.replied, unit: '封' },
+                { label: '進入洽談', value: outreachStats.negotiating, unit: '組' },
+              ].map(stat => (
+                <div key={stat.label} className="flex items-center justify-between">
+                  <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    {stat.label}
+                  </span>
+                  <span className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
+                    {stat.value}
+                    <span className="text-xs ml-0.5" style={{ color: 'var(--text-secondary)' }}>
+                      {stat.unit}
+                    </span>
+                  </span>
                 </div>
-                <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>{stat.label}</div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-xl px-4 py-3 text-sm" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
-            無法讀取外展資料
-          </div>
-        )}
-      </section>
+              ))}
+            </div>
+          ) : (
+            <div
+              className="rounded-xl px-3 py-3 text-xs"
+              style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+            >
+              無法讀取外展資料
+            </div>
+          )}
+        </section>
 
-      {/* 財務摘要 */}
-      <section id="finance">
-        <h2 className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--text-secondary)' }}>
-          本月財務
-        </h2>
-        {financeSummary ? (
-          <div
-            className="rounded-xl px-4 py-3 grid grid-cols-3 gap-4"
-            style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
+        <section id="finance">
+          <h2
+            className="text-xs font-semibold tracking-widest uppercase mb-3"
+            style={{ color: 'var(--text-secondary)' }}
           >
-            {[
-              { label: '收入', value: financeSummary.income, color: '#22c55e' },
-              { label: '支出', value: financeSummary.expense, color: '#ef4444' },
-              { label: '淨利', value: financeSummary.profit, color: 'var(--accent)' },
-            ].map(stat => (
-              <div key={stat.label} className="text-center">
-                <div className="text-sm font-bold leading-tight" style={{ color: stat.color }}>
-                  {stat.value}
+            本月財務
+          </h2>
+          {financeSummary ? (
+            <div
+              className="rounded-xl px-3 py-3 space-y-2"
+              style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', height: 'calc(100% - 28px)' }}
+            >
+              {[
+                { label: '收入', value: 'NT$' + financeSummary.income, color: '#22c55e' },
+                { label: '支出', value: 'NT$' + financeSummary.expense, color: '#ef4444' },
+                { label: '淨利', value: financeSummary.profit, color: 'var(--accent)' },
+              ].map(stat => (
+                <div key={stat.label} className="flex items-center justify-between">
+                  <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    {stat.label}
+                  </span>
+                  <span className="text-xs font-bold" style={{ color: stat.color }}>
+                    {stat.value}
+                  </span>
                 </div>
-                <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>{stat.label}</div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-xl px-4 py-3 text-sm" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
-            無法讀取財務資料
-          </div>
-        )}
-      </section>
+              ))}
+            </div>
+          ) : (
+            <div
+              className="rounded-xl px-3 py-3 text-xs"
+              style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+            >
+              無法讀取財務資料
+            </div>
+          )}
+        </section>
+      </div>
 
-      {/* 系統狀態（可展開） */}
+      {/* 系統狀態 */}
       <section id="systems">
-        <h2 className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--text-secondary)' }}>
+        <h2
+          className="text-xs font-semibold tracking-widest uppercase mb-3"
+          style={{ color: 'var(--text-secondary)' }}
+        >
           系統狀態 <span className="normal-case font-normal ml-1">（點擊展開詳情）</span>
         </h2>
         <div className="space-y-2">
-          {systems.map((sys: Parameters<typeof SystemCard>[0]['sys']) => (
+          {systems.map((sys) => (
             <SystemCard key={sys.id} sys={sys} />
           ))}
         </div>
@@ -354,7 +429,10 @@ export default async function Home() {
 
       {/* 部門架構 */}
       <section id="departments">
-        <h2 className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--text-secondary)' }}>
+        <h2
+          className="text-xs font-semibold tracking-widest uppercase mb-3"
+          style={{ color: 'var(--text-secondary)' }}
+        >
           部門架構
         </h2>
         <div
@@ -363,8 +441,12 @@ export default async function Home() {
         >
           {departments.map(d => (
             <div key={d.dept} className="flex items-center justify-between py-2.5">
-              <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{d.dept}</span>
-              <span className="text-xs text-right" style={{ color: 'var(--text-secondary)' }}>{d.role}</span>
+              <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                {d.dept}
+              </span>
+              <span className="text-xs text-right" style={{ color: 'var(--text-secondary)' }}>
+                {d.role}
+              </span>
             </div>
           ))}
         </div>

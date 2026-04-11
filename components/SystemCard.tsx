@@ -16,25 +16,50 @@ function statusInfo(status: string) {
 export function SystemCard({ sys }: { sys: System }) {
   const [expanded, setExpanded] = useState(false);
   const dot = statusInfo(sys.status);
-  const hColor = sys.health_score >= 4 ? '#22c55e' : sys.health_score >= 3 ? '#eab308' : '#ef4444';
+  const hColor =
+    sys.health_score >= 4 ? '#22c55e' : sys.health_score >= 3 ? '#eab308' : '#ef4444';
   const hasTasks = sys.pending_tasks.length > 0;
 
   return (
     <div
       className="rounded-xl px-4 py-4 cursor-pointer select-none"
       style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
-      onClick={() => setExpanded(v => !v)}
+      onClick={() => setExpanded((v) => !v)}
     >
-      {/* 第一行：名稱 + 狀態 + 展開箭頭 */}
+      {/* 第一行：名稱 + 狀態 + URL + 展開 */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: dot.color }} />
-          <span className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>{sys.short_code}</span>
-          <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{sys.name}</span>
+          <span
+            className="w-2 h-2 rounded-full shrink-0"
+            style={{ backgroundColor: dot.color }}
+          />
+          <span className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>
+            {sys.short_code}
+          </span>
+          <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+            {sys.name}
+          </span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium" style={{ color: dot.color }}>{dot.label}</span>
-          <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{expanded ? '▲' : '▼'}</span>
+        <div className="flex items-center gap-3">
+          {/* URL direct link */}
+          {sys.url && (
+            <a
+              href={sys.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-semibold"
+              style={{ color: 'var(--accent)', textDecoration: 'none' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              開啟 ↗
+            </a>
+          )}
+          <span className="text-xs font-medium" style={{ color: dot.color }}>
+            {dot.label}
+          </span>
+          <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+            {expanded ? '▲' : '▼'}
+          </span>
         </div>
       </div>
 
@@ -42,7 +67,9 @@ export function SystemCard({ sys }: { sys: System }) {
       <div className="flex items-center justify-between">
         <span className="text-xs font-mono tracking-wider" style={{ color: hColor }}>
           {healthBar(sys.health_score)}
-          <span className="ml-2" style={{ color: 'var(--text-secondary)' }}>{sys.health_score}/5</span>
+          <span className="ml-2" style={{ color: 'var(--text-secondary)' }}>
+            {sys.health_score}/5
+          </span>
         </span>
         <span
           className="text-xs font-medium px-2 py-0.5 rounded-full"
@@ -57,7 +84,22 @@ export function SystemCard({ sys }: { sys: System }) {
 
       {/* 展開內容 */}
       {expanded && (
-        <div className="mt-3 pt-3 space-y-3" style={{ borderTop: '1px solid var(--border)' }}>
+        <div
+          className="mt-3 pt-3 space-y-3"
+          style={{ borderTop: '1px solid var(--border)' }}
+        >
+          {/* 技術棧 */}
+          {sys.tech && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>技術：</span>
+              <span
+                className="text-xs px-2 py-0.5 rounded-full font-mono"
+                style={{ backgroundColor: '#3b82f620', color: '#3b82f6', border: '1px solid #3b82f630' }}
+              >
+                {sys.tech}
+              </span>
+            </div>
+          )}
 
           {/* 待辦清單 */}
           {hasTasks ? (
@@ -68,21 +110,41 @@ export function SystemCard({ sys }: { sys: System }) {
               <div className="space-y-1.5">
                 {sys.pending_tasks.map((task, i) => (
                   <div key={i} className="flex items-start gap-2">
-                    <span className="text-xs shrink-0 mt-0.5" style={{ color: '#eab308' }}>·</span>
-                    <span className="text-xs leading-relaxed" style={{ color: 'var(--text-primary)' }}>{task}</span>
+                    <span
+                      className="text-xs shrink-0 mt-0.5"
+                      style={{ color: '#eab308' }}
+                    >
+                      ·
+                    </span>
+                    <span
+                      className="text-xs leading-relaxed"
+                      style={{ color: 'var(--text-primary)' }}
+                    >
+                      {task}
+                    </span>
                   </div>
                 ))}
               </div>
             </div>
           ) : (
-            <div className="text-xs" style={{ color: '#22c55e' }}>✓ 目前無待辦事項</div>
+            <div className="text-xs" style={{ color: '#22c55e' }}>
+              ✓ 目前無待辦事項
+            </div>
           )}
 
           {/* 備註 */}
           {sys.notes && (
             <div>
-              <div className="text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>備註</div>
-              <div className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+              <div
+                className="text-xs font-semibold mb-1"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                備註
+              </div>
+              <div
+                className="text-xs leading-relaxed"
+                style={{ color: 'var(--text-secondary)' }}
+              >
                 {sys.notes.length > 150 ? sys.notes.slice(0, 150) + '…' : sys.notes}
               </div>
             </div>
@@ -91,18 +153,6 @@ export function SystemCard({ sys }: { sys: System }) {
           {/* 最後更新 */}
           <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
             最後更新：{sys.last_updated}
-            {sys.url && (
-              <a
-                href={sys.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="ml-3"
-                style={{ color: 'var(--accent)', textDecoration: 'none' }}
-                onClick={e => e.stopPropagation()}
-              >
-                開啟 ↗
-              </a>
-            )}
           </div>
         </div>
       )}
