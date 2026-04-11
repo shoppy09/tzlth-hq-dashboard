@@ -33,3 +33,7 @@ export async function getOutreachLog() {
 export async function getContentCalendar() {
   return fetchFile('content/content-calendar.md');
 }
+
+export async function getFinanceReport() {
+  return fetchFile('finance/monthly-report.md');
+}

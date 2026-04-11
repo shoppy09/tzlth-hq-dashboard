@@ -10,6 +10,8 @@ const navItems = [
   { label: '總覽', href: '#overview' },
   { label: '任務', href: '#tasks' },
   { label: '內容', href: '#content' },
+  { label: '外展', href: '#outreach' },
+  { label: '財務', href: '#finance' },
   { label: '系統', href: '#systems' },
   { label: '部門', href: '#departments' },
 ];

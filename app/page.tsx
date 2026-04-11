@@ -1,4 +1,4 @@
-import { getInventory, getTasksMd, getContentCalendar } from '@/lib/github';
+import { getInventory, getTasksMd, getContentCalendar, getOutreachLog, getFinanceReport } from '@/lib/github';
 import { parseTasks } from '@/lib/parse-tasks';
 import { SystemCard } from '@/components/SystemCard';
 
@@ -27,6 +27,36 @@ function parseContentCalendar(md: string): ContentItem[] {
   }
   // Return only items with actual content (not placeholders)
   return items.filter(i => i.date !== '-' && i.topic !== '-' && i.topic !== '');
+}
+
+interface OutreachStats {
+  sent: number;
+  replied: number;
+  negotiating: number;
+}
+
+function parseOutreachLog(md: string): OutreachStats {
+  const sent = Number(md.match(/累計寄出：(\d+)/)?.[1] ?? 0);
+  const replied = Number(md.match(/已回覆：(\d+)/)?.[1] ?? 0);
+  const negotiating = Number(md.match(/進入洽談：(\d+)/)?.[1] ?? 0);
+  return { sent, replied, negotiating };
+}
+
+interface FinanceSummary {
+  income: string;
+  expense: string;
+  profit: string;
+}
+
+function parseFinanceReport(md: string): FinanceSummary {
+  const incomeMatch = md.match(/本月收入合計：NT\$([^\s\n\*]+)/);
+  const expenseMatch = md.match(/本月支出合計：NT\$([^\s\n\*]+)/);
+  const profitMatch = md.match(/\*\*本月淨利\*\*\s*\|\s*\*\*([^*\n]+)\*\*/);
+  return {
+    income: incomeMatch?.[1] ?? '—',
+    expense: expenseMatch?.[1] ?? '—',
+    profit: profitMatch?.[1] ?? '—',
+  };
 }
 
 function priorityColor(p: string) {
@@ -70,6 +100,8 @@ export default async function Home() {
   let systems = [];
   let tasksMd = '';
   let contentItems: ContentItem[] = [];
+  let outreachStats: OutreachStats | null = null;
+  let financeSummary: FinanceSummary | null = null;
 
   try {
     const inventory = await getInventory();
@@ -87,7 +119,21 @@ export default async function Home() {
     const calMd = await getContentCalendar();
     contentItems = parseContentCalendar(calMd);
   } catch {
-    // content calendar is optional — fail silently
+    // optional — fail silently
+  }
+
+  try {
+    const outreachMd = await getOutreachLog();
+    outreachStats = parseOutreachLog(outreachMd);
+  } catch {
+    // optional — fail silently
+  }
+
+  try {
+    const financeMd = await getFinanceReport();
+    financeSummary = parseFinanceReport(financeMd);
+  } catch {
+    // optional — fail silently
   }
 
   const tasks = parseTasks(tasksMd);
@@ -213,6 +259,66 @@ export default async function Home() {
             style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
           >
             本週尚無排程內容 — 請更新 content/content-calendar.md
+          </div>
+        )}
+      </section>
+
+      {/* 外展進度 */}
+      <section id="outreach">
+        <h2 className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--text-secondary)' }}>
+          外展進度
+        </h2>
+        {outreachStats ? (
+          <div
+            className="rounded-xl px-4 py-3 grid grid-cols-3 gap-4"
+            style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
+          >
+            {[
+              { label: '累計寄出', value: outreachStats.sent, unit: '封' },
+              { label: '已回覆', value: outreachStats.replied, unit: '封' },
+              { label: '進入洽談', value: outreachStats.negotiating, unit: '組' },
+            ].map(stat => (
+              <div key={stat.label} className="text-center">
+                <div className="text-xl font-bold" style={{ color: 'var(--accent)' }}>
+                  {stat.value}<span className="text-sm ml-0.5">{stat.unit}</span>
+                </div>
+                <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>{stat.label}</div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-xl px-4 py-3 text-sm" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
+            無法讀取外展資料
+          </div>
+        )}
+      </section>
+
+      {/* 財務摘要 */}
+      <section id="finance">
+        <h2 className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--text-secondary)' }}>
+          本月財務
+        </h2>
+        {financeSummary ? (
+          <div
+            className="rounded-xl px-4 py-3 grid grid-cols-3 gap-4"
+            style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
+          >
+            {[
+              { label: '收入', value: financeSummary.income, color: '#22c55e' },
+              { label: '支出', value: financeSummary.expense, color: '#ef4444' },
+              { label: '淨利', value: financeSummary.profit, color: 'var(--accent)' },
+            ].map(stat => (
+              <div key={stat.label} className="text-center">
+                <div className="text-sm font-bold leading-tight" style={{ color: stat.color }}>
+                  {stat.value}
+                </div>
+                <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>{stat.label}</div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-xl px-4 py-3 text-sm" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
+            無法讀取財務資料
           </div>
         )}
       </section>
