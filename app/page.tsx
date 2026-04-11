@@ -200,6 +200,10 @@ export default async function Home() {
             { dept: '業務部 BIZ', path: 'business/', role: '合作外展・潛在客戶' },
             { dept: '知識庫 KM', path: 'knowledge/', role: '方法論・SOP・決策記錄・參考文件' },
             { dept: '策略部 STR', path: 'strategy/', role: '組織架構・長期規劃・總管模式' },
+            { dept: '財務部 FIN', path: 'finance/', role: '收入・支出・月淨利・未收款' },
+            { dept: '客戶部 CRM', path: 'crm/', role: '諮詢記錄・來源追蹤・回訪轉介紹' },
+            { dept: '產品部 PRD', path: 'product/', role: '診斷・預約・產品路線圖・轉換率' },
+            { dept: '法務部 LEG', path: 'legal/', role: '服務條款・隱私政策・合作合約' },
           ].map(d => (
             <div key={d.dept} className="flex items-center justify-between py-2">
               <div className="flex items-center gap-2">
