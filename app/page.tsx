@@ -192,11 +192,14 @@ export default async function Home() {
           style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', borderColor: 'var(--border)' }}
         >
           {[
-            { dept: '人資部 HR', path: 'hr/', role: '系統清單・盤點・健康度' },
-            { dept: '開發部 DEV', path: 'dev/', role: '功能開發・Bug・新功能' },
-            { dept: '行銷部 MKT', path: 'marketing/', role: 'Threads・LINE・官網文章' },
-            { dept: '資安部 SEC', path: 'security/', role: 'API 金鑰・安全檢查' },
+            { dept: '人資部 HR', path: 'hr/', role: '員工冊・盤點・健康度' },
+            { dept: '開發部 DEV', path: 'dev/', role: '功能開發・Bug・版本管理' },
+            { dept: '資安部 SEC', path: 'security/', role: '安全架構・API 金鑰・存取控制' },
+            { dept: '內容部 CNT', path: 'content/', role: '內容策略・Threads 規劃・文章' },
+            { dept: '社群部 SOC', path: 'social/', role: 'LINE@・Threads 數據・粉絲成長' },
             { dept: '業務部 BIZ', path: 'business/', role: '合作外展・潛在客戶' },
+            { dept: '知識庫 KM', path: 'knowledge/', role: '方法論・SOP・決策記錄・參考文件' },
+            { dept: '策略部 STR', path: 'strategy/', role: '組織架構・長期規劃・總管模式' },
           ].map(d => (
             <div key={d.dept} className="flex items-center justify-between py-2">
               <div className="flex items-center gap-2">
