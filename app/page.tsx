@@ -9,6 +9,16 @@ interface ContentItem {
   status: string;
 }
 
+function parseItemDate(dateStr: string): Date | null {
+  const match = dateStr.match(/^(\d{1,2})\/(\d{1,2})$/);
+  if (!match) return null;
+  const now = new Date();
+  const d = new Date(now.getFullYear(), parseInt(match[1], 10) - 1, parseInt(match[2], 10));
+  // If date is more than 6 months in the past, it's probably next year
+  if (now.getTime() - d.getTime() > 180 * 24 * 60 * 60 * 1000) d.setFullYear(d.getFullYear() + 1);
+  return d;
+}
+
 function parseContentCalendar(md: string): ContentItem[] {
   const lines = md.split('\n');
   const items: ContentItem[] = [];
@@ -25,8 +35,15 @@ function parseContentCalendar(md: string): ContentItem[] {
       inTable = false;
     }
   }
-  // Return only items with actual content (not placeholders)
-  return items.filter(i => i.date !== '-' && i.topic !== '-' && i.topic !== '');
+  const now = new Date();
+  const cutoffPast = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);   // 3 天前
+  const cutoffFuture = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 未來 30 天
+  return items.filter(i => {
+    if (i.date === '-' || i.topic === '-' || i.topic === '') return false;
+    const d = parseItemDate(i.date);
+    if (!d) return true; // 無法解析日期則保留
+    return d >= cutoffPast && d <= cutoffFuture;
+  });
 }
 
 interface OutreachStats {
@@ -227,7 +244,7 @@ export default async function Home() {
       {/* 本週內容排程 */}
       <section id="content">
         <h2 className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--text-secondary)' }}>
-          本週內容排程
+          近期內容排程
         </h2>
         {contentItems.length > 0 ? (
           <div
@@ -258,7 +275,7 @@ export default async function Home() {
             className="rounded-xl px-4 py-3 text-sm"
             style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
           >
-            本週尚無排程內容 — 請更新 content/content-calendar.md
+            近 30 天內無排程內容 — 請更新 content/content-calendar.md
           </div>
         )}
       </section>
