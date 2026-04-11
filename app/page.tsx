@@ -42,11 +42,37 @@ export default async function Home() {
     ? (systems.reduce((s, sys) => s + sys.health_score, 0) / systems.length).toFixed(1)
     : '0';
 
+  const navItems = [
+    { label: '總覽', href: '#overview' },
+    { label: '任務', href: '#tasks' },
+    { label: '系統', href: '#systems' },
+    { label: '部門', href: '#departments' },
+  ];
+
   return (
     <div className="space-y-6">
 
+      {/* 快速導航 */}
+      <nav className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: 'none' }}>
+        {navItems.map(item => (
+          <a
+            key={item.href}
+            href={item.href}
+            className="shrink-0 text-xs font-semibold px-4 py-2 rounded-full transition-colors"
+            style={{
+              backgroundColor: 'var(--bg-card)',
+              border: '1px solid var(--border)',
+              color: 'var(--accent)',
+              textDecoration: 'none',
+            }}
+          >
+            {item.label}
+          </a>
+        ))}
+      </nav>
+
       {/* 總覽數字 */}
-      <section className="grid grid-cols-3 gap-3">
+      <section id="overview" className="grid grid-cols-3 gap-3">
         {[
           { label: '系統總數', value: String(systems.length) },
           { label: '平均健康', value: avgHealth + '/5' },
@@ -65,7 +91,7 @@ export default async function Home() {
 
       {/* P1 任務 */}
       {p1Tasks.length > 0 && (
-        <section>
+        <section id="tasks">
           <h2 className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: '#f97316' }}>
             ⚡ 本週必須完成
           </h2>
@@ -93,7 +119,7 @@ export default async function Home() {
       )}
 
       {/* 六系統狀態 */}
-      <section>
+      <section id="systems">
         <h2 className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--text-secondary)' }}>
           系統狀態
         </h2>
@@ -157,7 +183,7 @@ export default async function Home() {
       )}
 
       {/* 部門架構 */}
-      <section>
+      <section id="departments">
         <h2 className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--text-secondary)' }}>
           部門架構
         </h2>
