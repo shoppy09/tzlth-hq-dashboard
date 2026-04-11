@@ -1,65 +1,191 @@
-import Image from "next/image";
+import { getInventory, getTasksMd } from '@/lib/github';
+import { parseTasks } from '@/lib/parse-tasks';
+import { System } from '@/lib/types';
 
-export default function Home() {
+function healthBar(score: number) {
+  return Array.from({ length: 5 }, (_, i) => (i < score ? '█' : '░')).join('');
+}
+
+function statusDot(status: string) {
+  if (status === 'live' || status === 'active') return { color: '#22c55e', label: '上線中' };
+  if (status === 'testing') return { color: '#eab308', label: '測試中' };
+  return { color: '#94a3b8', label: status };
+}
+
+function priorityColor(p: string) {
+  if (p === 'P0') return '#ef4444';
+  if (p === 'P1') return '#f97316';
+  if (p === 'P2') return '#eab308';
+  return '#94a3b8';
+}
+
+export default async function Home() {
+  let systems: System[] = [];
+  let tasksMd = '';
+
+  try {
+    const inventory = await getInventory();
+    systems = inventory.systems;
+    tasksMd = await getTasksMd();
+  } catch {
+    return (
+      <div className="text-center py-20" style={{ color: '#ef4444' }}>
+        無法讀取總部資料。請確認 GITHUB_TOKEN 環境變數已設定。
+      </div>
+    );
+  }
+
+  const tasks = parseTasks(tasksMd);
+  const p1Tasks = tasks.filter(t => t.priority === 'P1' || t.priority === 'P0');
+  const p2Tasks = tasks.filter(t => t.priority === 'P2');
+  const avgHealth = systems.length
+    ? (systems.reduce((s, sys) => s + sys.health_score, 0) / systems.length).toFixed(1)
+    : '0';
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <div className="space-y-6">
+
+      {/* 總覽數字 */}
+      <section className="grid grid-cols-3 gap-3">
+        {[
+          { label: '系統總數', value: String(systems.length) },
+          { label: '平均健康', value: avgHealth + '/5' },
+          { label: 'P1 任務', value: String(p1Tasks.length) },
+        ].map(stat => (
+          <div
+            key={stat.label}
+            className="rounded-xl p-4 text-center"
+            style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            <div className="text-2xl font-bold" style={{ color: 'var(--accent)' }}>{stat.value}</div>
+            <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>{stat.label}</div>
+          </div>
+        ))}
+      </section>
+
+      {/* P1 任務 */}
+      {p1Tasks.length > 0 && (
+        <section>
+          <h2 className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: '#f97316' }}>
+            ⚡ 本週必須完成
+          </h2>
+          <div className="space-y-2">
+            {p1Tasks.map((t, i) => (
+              <div
+                key={i}
+                className="rounded-xl px-4 py-3 flex items-start gap-3"
+                style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
+              >
+                <span
+                  className="text-xs font-bold px-2 py-0.5 rounded mt-0.5 shrink-0"
+                  style={{ backgroundColor: priorityColor(t.priority) + '22', color: priorityColor(t.priority) }}
+                >
+                  {t.priority}
+                </span>
+                <div>
+                  <div className="text-xs font-semibold mb-0.5" style={{ color: 'var(--accent)' }}>{t.system}</div>
+                  <div className="text-sm" style={{ color: 'var(--text-primary)' }}>{t.content}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* 六系統狀態 */}
+      <section>
+        <h2 className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--text-secondary)' }}>
+          系統狀態
+        </h2>
+        <div className="space-y-2">
+          {systems.map(sys => {
+            const dot = statusDot(sys.status);
+            const hColor = sys.health_score >= 4 ? '#22c55e' : sys.health_score >= 3 ? '#eab308' : '#ef4444';
+            return (
+              <div
+                key={sys.id}
+                className="rounded-xl px-4 py-4"
+                style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: dot.color }} />
+                    <span className="font-bold text-sm">{sys.short_code}</span>
+                    <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{sys.name}</span>
+                  </div>
+                  <span className="text-xs font-mono" style={{ color: dot.color }}>{dot.label}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono tracking-wider" style={{ color: hColor }}>
+                    {healthBar(sys.health_score)}
+                  </span>
+                  <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    {sys.pending_tasks.length} 項待辦
+                  </span>
+                </div>
+              </div>
+            );
+          })}
         </div>
-      </main>
+      </section>
+
+      {/* P2 任務 */}
+      {p2Tasks.length > 0 && (
+        <section>
+          <h2 className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--text-secondary)' }}>
+            本週推進
+          </h2>
+          <div className="space-y-2">
+            {p2Tasks.map((t, i) => (
+              <div
+                key={i}
+                className="rounded-xl px-4 py-3 flex items-start gap-3"
+                style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
+              >
+                <span
+                  className="text-xs font-bold px-2 py-0.5 rounded mt-0.5 shrink-0"
+                  style={{ backgroundColor: '#eab30822', color: '#eab308' }}
+                >P2</span>
+                <div>
+                  <div className="text-xs font-semibold mb-0.5" style={{ color: 'var(--text-secondary)' }}>{t.system}</div>
+                  <div className="text-sm" style={{ color: 'var(--text-primary)' }}>{t.content}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* 部門架構 */}
+      <section>
+        <h2 className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--text-secondary)' }}>
+          部門架構
+        </h2>
+        <div
+          className="rounded-xl px-4 py-4 divide-y"
+          style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', borderColor: 'var(--border)' }}
+        >
+          {[
+            { dept: '人資部 HR', path: 'hr/', role: '系統清單・盤點・健康度' },
+            { dept: '開發部 DEV', path: 'dev/', role: '功能開發・Bug・新功能' },
+            { dept: '行銷部 MKT', path: 'marketing/', role: 'Threads・LINE・官網文章' },
+            { dept: '資安部 SEC', path: 'security/', role: 'API 金鑰・安全檢查' },
+            { dept: '業務部 BIZ', path: 'business/', role: '合作外展・潛在客戶' },
+          ].map(d => (
+            <div key={d.dept} className="flex items-center justify-between py-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold">{d.dept}</span>
+                <span className="text-xs" style={{ color: 'var(--accent)' }}>{d.path}</span>
+              </div>
+              <span className="text-xs text-right" style={{ color: 'var(--text-secondary)' }}>{d.role}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <p className="text-center text-xs pb-4" style={{ color: 'var(--text-secondary)' }}>
+        資料每 5 分鐘自動更新 · TZLTH-HQ
+      </p>
     </div>
   );
 }
