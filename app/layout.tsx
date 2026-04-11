@@ -9,6 +9,7 @@ export const metadata: Metadata = {
 const navItems = [
   { label: '總覽', href: '#overview' },
   { label: '任務', href: '#tasks' },
+  { label: '內容', href: '#content' },
   { label: '系統', href: '#systems' },
   { label: '部門', href: '#departments' },
 ];

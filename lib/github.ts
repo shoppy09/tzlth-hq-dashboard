@@ -29,3 +29,7 @@ export async function getTasksMd() {
 export async function getOutreachLog() {
   return fetchFile('business/outreach-log.md');
 }
+
+export async function getContentCalendar() {
+  return fetchFile('content/content-calendar.md');
+}

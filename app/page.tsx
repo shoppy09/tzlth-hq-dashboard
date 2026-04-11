@@ -1,6 +1,33 @@
-import { getInventory, getTasksMd } from '@/lib/github';
+import { getInventory, getTasksMd, getContentCalendar } from '@/lib/github';
 import { parseTasks } from '@/lib/parse-tasks';
 import { SystemCard } from '@/components/SystemCard';
+
+interface ContentItem {
+  date: string;
+  type: string;
+  topic: string;
+  status: string;
+}
+
+function parseContentCalendar(md: string): ContentItem[] {
+  const lines = md.split('\n');
+  const items: ContentItem[] = [];
+  let inTable = false;
+  for (const line of lines) {
+    if (line.includes('| 日期 |')) { inTable = true; continue; }
+    if (inTable && line.startsWith('|---')) continue;
+    if (inTable && line.startsWith('|')) {
+      const cols = line.split('|').map(s => s.trim()).filter(Boolean);
+      if (cols.length >= 4 && cols[0] !== '-' && cols[0] !== '' && !cols[0].includes('---')) {
+        items.push({ date: cols[0], type: cols[1], topic: cols[2], status: cols[4] ?? cols[3] });
+      }
+    } else if (inTable && !line.startsWith('|')) {
+      inTable = false;
+    }
+  }
+  // Return only items with actual content (not placeholders)
+  return items.filter(i => i.date !== '-' && i.topic !== '-' && i.topic !== '');
+}
 
 function priorityColor(p: string) {
   if (p === 'P0') return '#ef4444';
@@ -24,9 +51,25 @@ const departments = [
   { dept: '法務部 LEG', role: '服務條款・隱私政策・合作合約' },
 ];
 
+function statusColor(status: string) {
+  if (status === '已發布' || status === '已發') return '#22c55e';
+  if (status === '排程中') return '#3b82f6';
+  if (status === '草稿') return '#f97316';
+  return '#94a3b8';
+}
+
+function typeIcon(type: string) {
+  if (type === '影片') return '🎬';
+  if (type === '貼文') return '✏️';
+  if (type === '文章') return '📝';
+  if (type === '廣播') return '📢';
+  return '📌';
+}
+
 export default async function Home() {
   let systems = [];
   let tasksMd = '';
+  let contentItems: ContentItem[] = [];
 
   try {
     const inventory = await getInventory();
@@ -38,6 +81,13 @@ export default async function Home() {
         無法讀取總部資料。請確認 GITHUB_TOKEN 環境變數已設定。
       </div>
     );
+  }
+
+  try {
+    const calMd = await getContentCalendar();
+    contentItems = parseContentCalendar(calMd);
+  } catch {
+    // content calendar is optional — fail silently
   }
 
   const tasks = parseTasks(tasksMd);
@@ -124,6 +174,45 @@ export default async function Home() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+      </section>
+
+      {/* 本週內容排程 */}
+      <section id="content">
+        <h2 className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--text-secondary)' }}>
+          本週內容排程
+        </h2>
+        {contentItems.length > 0 ? (
+          <div
+            className="rounded-xl px-4 py-2 divide-y"
+            style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
+          >
+            {contentItems.map((item, i) => (
+              <div key={i} className="flex items-center justify-between py-2.5 gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-base shrink-0">{typeIcon(item.type)}</span>
+                  <div className="min-w-0">
+                    <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>{item.date}</span>
+                    <span className="text-xs ml-2" style={{ color: 'var(--text-secondary)' }}>{item.type}</span>
+                    <div className="text-sm truncate" style={{ color: 'var(--text-primary)' }}>{item.topic}</div>
+                  </div>
+                </div>
+                <span
+                  className="text-xs font-semibold px-2 py-0.5 rounded shrink-0"
+                  style={{ backgroundColor: statusColor(item.status) + '22', color: statusColor(item.status) }}
+                >
+                  {item.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div
+            className="rounded-xl px-4 py-3 text-sm"
+            style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+          >
+            本週尚無排程內容 — 請更新 content/content-calendar.md
           </div>
         )}
       </section>
