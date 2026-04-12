@@ -20,11 +20,14 @@ function parseDailyChecklist(md: string): ChecklistItem[] {
   let idx = 0;
 
   for (const line of lines) {
-    if (line.startsWith('## 每天必做')) { include = true; section = 'daily'; }
-    else if (line.startsWith('## 每週一')) { include = dow === 1; section = 'mon'; }
-    else if (line.startsWith('## 每週五')) { include = dow === 5; section = 'fri'; }
-    else if (line.startsWith('## 每月 25 日')) { include = dom === 25; section = 'month25'; }
-    else if (line.startsWith('## ')) { include = false; }
+    if      (line.startsWith('## 每天必做'))     { include = true;      section = 'daily';   }
+    else if (line.startsWith('## 每週一'))       { include = dow === 1; section = 'mon';     }
+    else if (line.startsWith('## 每週二'))       { include = dow === 2; section = 'tue';     }
+    else if (line.startsWith('## 每週三'))       { include = dow === 3; section = 'wed';     }
+    else if (line.startsWith('## 每週四'))       { include = dow === 4; section = 'thu';     }
+    else if (line.startsWith('## 每週五'))       { include = dow === 5; section = 'fri';     }
+    else if (line.startsWith('## 每月 25 日'))   { include = dom === 25; section = 'month25'; }
+    else if (line.startsWith('## '))             { include = false; }
 
     if (include) {
       const m = line.match(/^- \[(.+?)\] (.+)/);
