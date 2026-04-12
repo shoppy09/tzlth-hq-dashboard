@@ -1,4 +1,4 @@
-import { getInventory, getTasksMd, getContentCalendar, getOutreachLog, getFinanceReport } from '@/lib/github';
+import { getInventory, getTasksMd, getContentCalendar, getOutreachLog, getFinanceReport, getGA4Log } from '@/lib/github';
 import { parseTasks } from '@/lib/parse-tasks';
 import { SystemCard } from '@/components/SystemCard';
 import { CommandCenter } from '@/components/CommandCenter';
@@ -77,6 +77,37 @@ function parseFinanceReport(md: string): FinanceSummary {
   };
 }
 
+interface GA4WeekRow {
+  week: string;
+  diagnoseStart: string;
+  diagnoseComplete: string;
+  completeRate: string;
+  upsellClick: string;
+  convRate: string;
+}
+
+function parseGA4Log(md: string): GA4WeekRow | null {
+  const lines = md.split('\n');
+  let inTable = false;
+  const rows: GA4WeekRow[] = [];
+  for (const line of lines) {
+    if (line.includes('| 週次 |')) { inTable = true; continue; }
+    if (inTable && line.startsWith('|---')) continue;
+    if (inTable && line.startsWith('|')) {
+      const cols = line.split('|').map(s => s.trim()).filter(Boolean);
+      if (cols.length >= 6 && cols[0] !== '週次') {
+        rows.push({
+          week: cols[0], diagnoseStart: cols[1], diagnoseComplete: cols[2],
+          completeRate: cols[3], upsellClick: cols[4], convRate: cols[5],
+        });
+      }
+    } else if (inTable && !line.startsWith('|')) {
+      inTable = false;
+    }
+  }
+  return rows.length > 0 ? rows[rows.length - 1] : null;
+}
+
 function priorityColor(p: string) {
   if (p === 'P0') return '#ef4444';
   if (p === 'P1') return '#f97316';
@@ -116,14 +147,16 @@ function typeIcon(type: string) {
 
 export default async function Home() {
   let systems: System[] = [];
+  let inventory: Record<string, unknown> = {};
   let tasksMd = '';
   let contentItems: ContentItem[] = [];
   let outreachStats: OutreachStats | null = null;
   let financeSummary: FinanceSummary | null = null;
+  let ga4Row: GA4WeekRow | null = null;
 
   try {
-    const inventory = await getInventory();
-    systems = inventory.systems;
+    inventory = await getInventory();
+    systems = inventory.systems as System[];
     tasksMd = await getTasksMd();
   } catch {
     return (
@@ -146,6 +179,11 @@ export default async function Home() {
   try {
     const financeMd = await getFinanceReport();
     financeSummary = parseFinanceReport(financeMd);
+  } catch { /* optional */ }
+
+  try {
+    const ga4Md = await getGA4Log();
+    ga4Row = parseGA4Log(ga4Md);
   } catch { /* optional */ }
 
   const tasks = parseTasks(tasksMd);
@@ -209,6 +247,59 @@ export default async function Home() {
             ))}
           </div>
         )}
+      </section>
+
+      {/* 數據快覽 */}
+      <section id="metrics">
+        <h2 className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--text-secondary)' }}>
+          數據快覽
+        </h2>
+        <div className="grid grid-cols-2 gap-3">
+          {/* 社群 */}
+          <div className="rounded-xl px-3 py-3 space-y-2" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+            <div className="text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>📣 社群</div>
+            {[
+              {
+                label: 'Threads 粉絲',
+                value: (systems.find(s => s.id === 'SYS-02') as any)?.current_followers?.toLocaleString() ?? '—',
+                unit: '人'
+              },
+              {
+                label: 'LINE 好友',
+                value: (inventory as any)?.line_followers?.toLocaleString() ?? '—',
+                unit: '人'
+              },
+            ].map(row => (
+              <div key={row.label} className="flex items-center justify-between">
+                <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{row.label}</span>
+                <span className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
+                  {row.value}<span className="text-xs ml-0.5" style={{ color: 'var(--text-secondary)' }}>{row.unit}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+          {/* 診斷產品 */}
+          <div className="rounded-xl px-3 py-3 space-y-2" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+            <div className="text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>🔬 診斷（本週）</div>
+            {ga4Row ? [
+              { label: '診斷完成', value: ga4Row.diagnoseComplete, unit: '次' },
+              { label: '完成率', value: ga4Row.completeRate, unit: '' },
+              { label: '升級點擊', value: ga4Row.upsellClick, unit: '次' },
+              { label: '轉換率', value: ga4Row.convRate, unit: '' },
+            ].map(row => (
+              <div key={row.label} className="flex items-center justify-between">
+                <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{row.label}</span>
+                <span className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
+                  {row.value}{row.unit && <span className="text-xs ml-0.5" style={{ color: 'var(--text-secondary)' }}>{row.unit}</span>}
+                </span>
+              </div>
+            )) : (
+              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                尚無數據 — 請每週五填入 product/ga4-weekly-log.md
+              </p>
+            )}
+          </div>
+        </div>
       </section>
 
       {/* 指令中心 */}

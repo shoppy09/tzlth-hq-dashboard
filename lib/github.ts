@@ -37,3 +37,11 @@ export async function getContentCalendar() {
 export async function getFinanceReport() {
   return fetchFile('finance/monthly-report.md');
 }
+
+export async function getGA4Log() {
+  return fetchFile('product/ga4-weekly-log.md');
+}
+
+export async function getSocialLog() {
+  return fetchFile('social/weekly-log.md');
+}
