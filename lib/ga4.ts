@@ -26,7 +26,8 @@ export interface WebsiteGA4Data {
 }
 
 export async function getWebsiteGA4Data(): Promise<WebsiteGA4Data | null> {
-  const propertyId = process.env.GOOGLE_ANALYTICS_PROPERTY_ID;
+  // 官網使用獨立的 Property ID（G-TK8D1DX7MJ 對應的數字 ID）
+  const propertyId = process.env.WEBSITE_GA4_PROPERTY_ID || process.env.GOOGLE_ANALYTICS_PROPERTY_ID;
   const credJson   = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
   if (!propertyId || !credJson) return null;
   try {
