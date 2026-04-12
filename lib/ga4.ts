@@ -49,17 +49,25 @@ export async function getWebsiteGA4Data(): Promise<WebsiteGA4Data | null> {
         next: { revalidate: 3600 },
       }
     );
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      console.error(`[GA4 website] HTTP ${res.status}: ${errText.slice(0, 300)}`);
+      return null;
+    }
     const data = await res.json();
     const row = data.rows?.[0];
-    if (!row) return null;
+    if (!row) {
+      console.error(`[GA4 website] No rows returned. propertyId=${propertyId}`);
+      return null;
+    }
     return {
       sessions:  parseInt(row.metricValues?.[0]?.value ?? '0', 10),
       users:     parseInt(row.metricValues?.[1]?.value ?? '0', 10),
       pageViews: parseInt(row.metricValues?.[2]?.value ?? '0', 10),
       period: '過去 7 天',
     };
-  } catch {
+  } catch (e) {
+    console.error('[GA4 website] exception:', e);
     return null;
   }
 }
@@ -108,7 +116,11 @@ export async function getDiagnosisGA4Data(): Promise<DiagnosisGA4Data | null> {
       }
     );
 
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      console.error(`[GA4 diagnosis] HTTP ${res.status}: ${errText.slice(0, 300)}`);
+      return null;
+    }
 
     const data = await res.json();
     const rows: Array<{ dimensionValues: Array<{ value: string }>; metricValues: Array<{ value: string }> }> =
@@ -140,7 +152,8 @@ export async function getDiagnosisGA4Data(): Promise<DiagnosisGA4Data | null> {
       convRate,
       period: '過去 7 天',
     };
-  } catch {
+  } catch (e) {
+    console.error('[GA4 diagnosis] exception:', e);
     return null;
   }
 }
