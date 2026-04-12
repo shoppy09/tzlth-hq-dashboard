@@ -153,6 +153,8 @@ export default async function Home() {
   let outreachStats: OutreachStats | null = null;
   let financeSummary: FinanceSummary | null = null;
   let ga4Row: GA4WeekRow | null = null;
+  let lineFollowers: number | null = null;
+  let kitSubscribers: number | null = null;
 
   try {
     inventory = await getInventory();
@@ -186,6 +188,37 @@ export default async function Home() {
     ga4Row = parseGA4Log(ga4Md);
   } catch { /* optional */ }
 
+  // ── LINE 好友數自動抓取（需 LINE_CHANNEL_ACCESS_TOKEN env var）
+  try {
+    const lineToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+    if (lineToken) {
+      const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
+      const lineRes = await fetch(
+        `https://api.line.biz/v2/bot/insight/followers?date=${today}`,
+        { headers: { Authorization: `Bearer ${lineToken}` }, next: { revalidate: 3600 } }
+      );
+      if (lineRes.ok) {
+        const lineData = await lineRes.json();
+        lineFollowers = lineData.followers ?? lineData.targetedReaches ?? null;
+      }
+    }
+  } catch { /* optional */ }
+
+  // ── Kit 訂閱人數自動抓取（需 KIT_API_KEY env var）
+  try {
+    const kitKey = process.env.KIT_API_KEY;
+    if (kitKey) {
+      const kitRes = await fetch(
+        `https://api.convertkit.com/v3/subscribers?api_secret=${kitKey}&count=0`,
+        { next: { revalidate: 3600 } }
+      );
+      if (kitRes.ok) {
+        const kitData = await kitRes.json();
+        kitSubscribers = kitData.total_subscribers ?? null;
+      }
+    }
+  } catch { /* optional */ }
+
   const tasks = parseTasks(tasksMd);
   const p1Tasks = tasks.filter(t => t.priority === 'P1' || t.priority === 'P0');
   const p2Tasks = tasks.filter(t => t.priority === 'P2');
@@ -193,9 +226,9 @@ export default async function Home() {
     ? (systems.reduce((s, sys) => s + sys.health_score, 0) / systems.length).toFixed(1)
     : '0';
 
-  // Live systems with URL for quick links
+  // Live systems with URL for quick links（排除儀表板本身，避免循環連結）
   const quickLinks = systems.filter(
-    s => s.url && (s.status === 'live' || s.status === 'active')
+    s => s.url && (s.status === 'live' || s.status === 'active') && s.id !== 'SYS-07'
   );
 
   return (
@@ -260,18 +293,32 @@ export default async function Home() {
             <div className="text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>📣 社群</div>
             {[
               {
-                label: 'Threads 粉絲',
+                label: 'Threads',
                 value: (systems.find(s => s.id === 'SYS-02') as any)?.current_followers?.toLocaleString() ?? '—',
                 unit: '人'
               },
               {
                 label: 'LINE 好友',
-                value: (inventory as any)?.line_followers?.toLocaleString() ?? '—',
-                unit: '人'
+                value: lineFollowers != null ? lineFollowers.toLocaleString() : ((inventory as any)?.line_followers?.toLocaleString() ?? '—'),
+                unit: '人',
+                note: lineFollowers != null ? '自動' : (process.env.LINE_CHANNEL_ACCESS_TOKEN ? null : '需設定 TOKEN')
+              },
+              {
+                label: 'Kit 訂閱',
+                value: kitSubscribers != null ? kitSubscribers.toLocaleString() : '—',
+                unit: '人',
+                note: kitSubscribers != null ? '自動' : (process.env.KIT_API_KEY ? null : '需設定 KEY')
               },
             ].map(row => (
               <div key={row.label} className="flex items-center justify-between">
-                <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{row.label}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{row.label}</span>
+                  {(row as any).note && (
+                    <span className="text-xs" style={{ color: (row as any).note === '自動' ? '#22c55e' : '#f97316', fontSize: '10px' }}>
+                      {(row as any).note}
+                    </span>
+                  )}
+                </div>
                 <span className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
                   {row.value}<span className="text-xs ml-0.5" style={{ color: 'var(--text-secondary)' }}>{row.unit}</span>
                 </span>
