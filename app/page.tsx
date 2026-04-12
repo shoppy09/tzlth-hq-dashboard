@@ -1,4 +1,5 @@
 import { getInventory, getTasksMd, getContentCalendar, getOutreachLog, getFinanceReport, getGA4Log } from '@/lib/github';
+import { getDiagnosisGA4Data, DiagnosisGA4Data } from '@/lib/ga4';
 import { parseTasks } from '@/lib/parse-tasks';
 import { SystemCard } from '@/components/SystemCard';
 import { CommandCenter } from '@/components/CommandCenter';
@@ -153,6 +154,7 @@ export default async function Home() {
   let outreachStats: OutreachStats | null = null;
   let financeSummary: FinanceSummary | null = null;
   let ga4Row: GA4WeekRow | null = null;
+  let ga4Live: DiagnosisGA4Data | null = null;
   let lineFollowers: number | null = null;
   let kitSubscribers: number | null = null;
 
@@ -186,6 +188,11 @@ export default async function Home() {
   try {
     const ga4Md = await getGA4Log();
     ga4Row = parseGA4Log(ga4Md);
+  } catch { /* optional */ }
+
+  // ── GA4 診斷數據自動抓取（需 GOOGLE_ANALYTICS_PROPERTY_ID + GOOGLE_SERVICE_ACCOUNT_JSON）
+  try {
+    ga4Live = await getDiagnosisGA4Data();
   } catch { /* optional */ }
 
   // ── LINE 好友數自動抓取（需 LINE_CHANNEL_ACCESS_TOKEN env var）
@@ -327,12 +334,32 @@ export default async function Home() {
           </div>
           {/* 診斷產品 */}
           <div className="rounded-xl px-3 py-3 space-y-2" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-            <div className="text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>🔬 診斷（本週）</div>
-            {ga4Row ? [
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>🔬 診斷</span>
+              {ga4Live ? (
+                <span className="text-xs" style={{ color: '#22c55e', fontSize: '10px' }}>自動・{ga4Live.period}</span>
+              ) : ga4Row ? (
+                <span className="text-xs" style={{ color: '#f97316', fontSize: '10px' }}>手動週報</span>
+              ) : null}
+            </div>
+            {ga4Live ? [
+              { label: '診斷開始', value: String(ga4Live.diagnoseStarted), unit: '次' },
+              { label: '診斷完成', value: String(ga4Live.diagnoseCompleted), unit: '次' },
+              { label: '完成率',   value: ga4Live.completeRate, unit: '' },
+              { label: '升級點擊', value: String(ga4Live.upsellClicked), unit: '次' },
+              { label: '轉換率',   value: ga4Live.convRate, unit: '' },
+            ].map(row => (
+              <div key={row.label} className="flex items-center justify-between">
+                <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{row.label}</span>
+                <span className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
+                  {row.value}{row.unit && <span className="text-xs ml-0.5" style={{ color: 'var(--text-secondary)' }}>{row.unit}</span>}
+                </span>
+              </div>
+            )) : ga4Row ? [
               { label: '診斷完成', value: ga4Row.diagnoseComplete, unit: '次' },
-              { label: '完成率', value: ga4Row.completeRate, unit: '' },
+              { label: '完成率',   value: ga4Row.completeRate, unit: '' },
               { label: '升級點擊', value: ga4Row.upsellClick, unit: '次' },
-              { label: '轉換率', value: ga4Row.convRate, unit: '' },
+              { label: '轉換率',   value: ga4Row.convRate, unit: '' },
             ].map(row => (
               <div key={row.label} className="flex items-center justify-between">
                 <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{row.label}</span>
@@ -342,7 +369,7 @@ export default async function Home() {
               </div>
             )) : (
               <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                尚無數據 — 請每週五填入 product/ga4-weekly-log.md
+                尚無數據 — 設定 GOOGLE_SERVICE_ACCOUNT_JSON 啟用自動抓取
               </p>
             )}
           </div>
