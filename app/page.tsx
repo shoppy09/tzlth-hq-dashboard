@@ -1,17 +1,19 @@
-import { getInventory, getTasksMd, getContentCalendar, getOutreachLog, getFinanceReport, getGA4Log } from '@/lib/github';
-import { getDiagnosisGA4Data, DiagnosisGA4Data } from '@/lib/ga4';
+import { getInventory, getTasksMd, getContentCalendar, getOutreachLog, getFinanceReport, getGA4Log, getFollowerHistory } from '@/lib/github';
+import { getDiagnosisGA4Data, getWebsiteGA4Data, DiagnosisGA4Data, WebsiteGA4Data } from '@/lib/ga4';
 import { parseTasks } from '@/lib/parse-tasks';
 import { SystemCard } from '@/components/SystemCard';
 import { CommandCenter } from '@/components/CommandCenter';
 import { System } from '@/lib/types';
 
-interface ContentItem {
-  date: string;
-  type: string;
-  topic: string;
-  status: string;
-}
+// ─── Type definitions ──────────────────────────────────────
+interface ContentItem { date: string; type: string; topic: string; status: string; }
+interface OutreachStats { sent: number; replied: number; negotiating: number; }
+interface FinanceSummary { income: string; expense: string; profit: string; }
+interface GA4WeekRow { week: string; diagnoseStart: string; diagnoseComplete: string; completeRate: string; upsellClick: string; convRate: string; }
+interface FollowerPoint { date: string; followers: number; }
+interface BookingStats { total: number; thisWeek: number; thisMonth: number; }
 
+// ─── Parsers ───────────────────────────────────────────────
 function parseItemDate(dateStr: string): Date | null {
   const match = dateStr.match(/^(\d{1,2})\/(\d{1,2})$/);
   if (!match) return null;
@@ -33,12 +35,10 @@ function parseContentCalendar(md: string): ContentItem[] {
       if (cols.length >= 4 && cols[0] !== '-' && cols[0] !== '' && !cols[0].includes('---')) {
         items.push({ date: cols[0], type: cols[1], topic: cols[2], status: cols[4] ?? cols[3] });
       }
-    } else if (inTable && !line.startsWith('|')) {
-      inTable = false;
-    }
+    } else if (inTable && !line.startsWith('|')) { inTable = false; }
   }
   const now = new Date();
-  const cutoffPast = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+  const cutoffPast   = new Date(now.getTime() - 3  * 24 * 60 * 60 * 1000);
   const cutoffFuture = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
   return items.filter(i => {
     if (i.date === '-' || i.topic === '-' || i.topic === '') return false;
@@ -48,43 +48,22 @@ function parseContentCalendar(md: string): ContentItem[] {
   });
 }
 
-interface OutreachStats {
-  sent: number;
-  replied: number;
-  negotiating: number;
-}
-
 function parseOutreachLog(md: string): OutreachStats {
-  const sent = Number(md.match(/累計寄出：(\d+)/)?.[1] ?? 0);
-  const replied = Number(md.match(/已回覆：(\d+)/)?.[1] ?? 0);
+  const sent       = Number(md.match(/累計寄出：(\d+)/)?.[1] ?? 0);
+  const replied    = Number(md.match(/已回覆：(\d+)/)?.[1]   ?? 0);
   const negotiating = Number(md.match(/進入洽談：(\d+)/)?.[1] ?? 0);
   return { sent, replied, negotiating };
 }
 
-interface FinanceSummary {
-  income: string;
-  expense: string;
-  profit: string;
-}
-
 function parseFinanceReport(md: string): FinanceSummary {
-  const incomeMatch = md.match(/本月收入合計：NT\$([^\s\n\*]+)/);
+  const incomeMatch  = md.match(/本月收入合計：NT\$([^\s\n\*]+)/);
   const expenseMatch = md.match(/本月支出合計：NT\$([^\s\n\*]+)/);
-  const profitMatch = md.match(/\*\*本月淨利\*\*\s*\|\s*\*\*([^*\n]+)\*\*/);
+  const profitMatch  = md.match(/\*\*本月淨利\*\*\s*\|\s*\*\*([^*\n]+)\*\*/);
   return {
-    income: incomeMatch?.[1] ?? '—',
+    income:  incomeMatch?.[1]  ?? '—',
     expense: expenseMatch?.[1] ?? '—',
-    profit: profitMatch?.[1] ?? '—',
+    profit:  profitMatch?.[1]  ?? '—',
   };
-}
-
-interface GA4WeekRow {
-  week: string;
-  diagnoseStart: string;
-  diagnoseComplete: string;
-  completeRate: string;
-  upsellClick: string;
-  convRate: string;
 }
 
 function parseGA4Log(md: string): GA4WeekRow | null {
@@ -97,23 +76,98 @@ function parseGA4Log(md: string): GA4WeekRow | null {
     if (inTable && line.startsWith('|')) {
       const cols = line.split('|').map(s => s.trim()).filter(Boolean);
       if (cols.length >= 6 && cols[0] !== '週次') {
-        rows.push({
-          week: cols[0], diagnoseStart: cols[1], diagnoseComplete: cols[2],
-          completeRate: cols[3], upsellClick: cols[4], convRate: cols[5],
-        });
+        rows.push({ week: cols[0], diagnoseStart: cols[1], diagnoseComplete: cols[2], completeRate: cols[3], upsellClick: cols[4], convRate: cols[5] });
       }
-    } else if (inTable && !line.startsWith('|')) {
-      inTable = false;
-    }
+    } else if (inTable && !line.startsWith('|')) { inTable = false; }
   }
   return rows.length > 0 ? rows[rows.length - 1] : null;
 }
 
+// ─── Helpers ───────────────────────────────────────────────
 function priorityColor(p: string) {
   if (p === 'P0') return '#ef4444';
   if (p === 'P1') return '#f97316';
   if (p === 'P2') return '#eab308';
   return '#94a3b8';
+}
+function statusColor(s: string) {
+  if (s === '已發布' || s === '已發') return '#22c55e';
+  if (s === '排程中') return '#3b82f6';
+  if (s === '草稿') return '#f97316';
+  return '#94a3b8';
+}
+function typeIcon(t: string) {
+  if (t === '影片') return '🎬';
+  if (t === '貼文') return '✏️';
+  if (t === '文章') return '📝';
+  if (t === '廣播') return '📢';
+  return '📌';
+}
+function healthColor(score: number) {
+  if (score >= 4) return '#22c55e';
+  if (score === 3) return '#eab308';
+  return '#ef4444';
+}
+
+// ─── Sparkline (SVG, no deps) ──────────────────────────────
+function Sparkline({ data, color = '#4f8ef7' }: { data: number[]; color?: string }) {
+  if (data.length < 2) return null;
+  const w = 80, h = 28;
+  const max = Math.max(...data), min = Math.min(...data);
+  const range = max - min || 1;
+  const pts = data.map((v, i) =>
+    `${(i / (data.length - 1)) * w},${h - ((v - min) / range) * (h - 4) - 2}`
+  ).join(' ');
+  const last = data[data.length - 1];
+  const cy = h - ((last - min) / range) * (h - 4) - 2;
+  return (
+    <svg width={w} height={h} style={{ overflow: 'visible', flexShrink: 0 }}>
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+      <circle cx={(w)} cy={cy} r="2.5" fill={color} />
+    </svg>
+  );
+}
+
+// ─── Stat row ──────────────────────────────────────────────
+function StatRow({ label, value, unit = '', note, alert }: { label: string; value: string; unit?: string; note?: string; alert?: boolean }) {
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-1.5">
+        <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{label}</span>
+        {note && <span className="text-xs" style={{ color: note === '自動' ? '#22c55e' : '#f97316', fontSize: '10px' }}>{note}</span>}
+      </div>
+      <span className="text-sm font-bold" style={{ color: alert ? '#ef4444' : 'var(--accent)' }}>
+        {value}{unit && <span className="text-xs ml-0.5" style={{ color: 'var(--text-secondary)' }}>{unit}</span>}
+      </span>
+    </div>
+  );
+}
+
+// ─── KPI card ──────────────────────────────────────────────
+function KpiCard({ icon, title, rows, health, sparkData }: {
+  icon: string; title: string;
+  rows: { label: string; value: string; unit?: string; note?: string }[];
+  health?: number;
+  sparkData?: number[];
+}) {
+  return (
+    <div className="rounded-xl px-3 py-3" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>{icon} {title}</span>
+        <div className="flex items-center gap-2">
+          {sparkData && sparkData.length >= 2 && <Sparkline data={sparkData} />}
+          {health != null && (
+            <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ color: healthColor(health), backgroundColor: healthColor(health) + '22', fontSize: '10px' }}>
+              ♥ {health}/5
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        {rows.map(r => <StatRow key={r.label} label={r.label} value={r.value} unit={r.unit} note={r.note} />)}
+      </div>
+    </div>
+  );
 }
 
 const departments = [
@@ -131,37 +185,22 @@ const departments = [
   { dept: '法務部 LEG', role: '服務條款・隱私政策・合作合約' },
 ];
 
-function statusColor(status: string) {
-  if (status === '已發布' || status === '已發') return '#22c55e';
-  if (status === '排程中') return '#3b82f6';
-  if (status === '草稿') return '#f97316';
-  return '#94a3b8';
-}
-
-function typeIcon(type: string) {
-  if (type === '影片') return '🎬';
-  if (type === '貼文') return '✏️';
-  if (type === '文章') return '📝';
-  if (type === '廣播') return '📢';
-  return '📌';
-}
-
+// ──────────────────────────────────────────────────────────
 export default async function Home() {
   let systems: System[] = [];
   let inventory: Record<string, unknown> = {};
   let tasksMd = '';
-  let contentItems: ContentItem[] = [];
-  let outreachStats: OutreachStats | null = null;
+  let contentItems: ContentItem[]    = [];
+  let outreachStats: OutreachStats   | null = null;
   let financeSummary: FinanceSummary | null = null;
-  let ga4Row: GA4WeekRow | null = null;
-  let ga4Live: DiagnosisGA4Data | null = null;
-  let lineFollowers: number | null = null;
-  let kitSubscribers: number | null = null;
+  let ga4Row: GA4WeekRow             | null = null;
+  let followerHistory: FollowerPoint[]      = [];
 
+  // ── Core (required) ────────────────────────────────────
   try {
     inventory = await getInventory();
-    systems = inventory.systems as System[];
-    tasksMd = await getTasksMd();
+    systems   = inventory.systems as System[];
+    tasksMd   = await getTasksMd();
   } catch {
     return (
       <div className="text-center py-20" style={{ color: '#ef4444' }}>
@@ -170,78 +209,100 @@ export default async function Home() {
     );
   }
 
-  try {
-    const calMd = await getContentCalendar();
-    contentItems = parseContentCalendar(calMd);
-  } catch { /* optional */ }
+  // ── Safe fetch helper ──────────────────────────────────
+  const safe = <T,>(p: Promise<T>): Promise<T | null> => p.catch(() => null);
 
-  try {
-    const outreachMd = await getOutreachLog();
-    outreachStats = parseOutreachLog(outreachMd);
-  } catch { /* optional */ }
+  const fetchLine = async (): Promise<number | null> => {
+    const t = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+    if (!t) return null;
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const r = await fetch(`https://api.line.biz/v2/bot/insight/followers?date=${today}`, {
+      headers: { Authorization: `Bearer ${t}` }, next: { revalidate: 3600 },
+    } as RequestInit);
+    if (!r.ok) return null;
+    const d = await r.json();
+    return (d.followers ?? d.targetedReaches ?? null) as number | null;
+  };
 
-  try {
-    const financeMd = await getFinanceReport();
-    financeSummary = parseFinanceReport(financeMd);
-  } catch { /* optional */ }
+  const fetchKit = async (): Promise<number | null> => {
+    const k = process.env.KIT_API_KEY;
+    if (!k) return null;
+    const r = await fetch(`https://api.convertkit.com/v3/subscribers?api_secret=${k}&count=0`, { next: { revalidate: 3600 } } as unknown as RequestInit);
+    if (!r.ok) return null;
+    const d = await r.json();
+    return (d.total_subscribers ?? null) as number | null;
+  };
 
-  try {
-    const ga4Md = await getGA4Log();
-    ga4Row = parseGA4Log(ga4Md);
-  } catch { /* optional */ }
+  const fetchBooking = async (): Promise<BookingStats | null> => {
+    const u = process.env.BOOKING_STATS_URL;
+    if (!u) return null;
+    const r = await fetch(`${u}/api/stats`, { next: { revalidate: 300 } } as unknown as RequestInit);
+    if (!r.ok) return null;
+    return r.json() as Promise<BookingStats>;
+  };
 
-  // ── GA4 診斷數據自動抓取（需 GOOGLE_ANALYTICS_PROPERTY_ID + GOOGLE_SERVICE_ACCOUNT_JSON）
-  try {
-    ga4Live = await getDiagnosisGA4Data();
-  } catch { /* optional */ }
+  const [
+    calMd, outreachMd, financeMd, ga4Md,
+    ga4Live, websiteGA4,
+    followerHistRaw,
+    lineFollowers, kitSubscribers, bookingStats,
+  ] = await Promise.all([
+    safe(getContentCalendar()),
+    safe(getOutreachLog()),
+    safe(getFinanceReport()),
+    safe(getGA4Log()),
+    safe(getDiagnosisGA4Data()),
+    safe(getWebsiteGA4Data()),
+    safe(getFollowerHistory()),
+    safe(fetchLine()),
+    safe(fetchKit()),
+    safe(fetchBooking()),
+  ]);
 
-  // ── LINE 好友數自動抓取（需 LINE_CHANNEL_ACCESS_TOKEN env var）
-  try {
-    const lineToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
-    if (lineToken) {
-      const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
-      const lineRes = await fetch(
-        `https://api.line.biz/v2/bot/insight/followers?date=${today}`,
-        { headers: { Authorization: `Bearer ${lineToken}` }, next: { revalidate: 3600 } }
-      );
-      if (lineRes.ok) {
-        const lineData = await lineRes.json();
-        lineFollowers = lineData.followers ?? lineData.targetedReaches ?? null;
-      }
-    }
-  } catch { /* optional */ }
+  contentItems   = calMd      ? parseContentCalendar(calMd)   : [];
+  outreachStats  = outreachMd ? parseOutreachLog(outreachMd)  : null;
+  financeSummary = financeMd  ? parseFinanceReport(financeMd) : null;
+  ga4Row         = ga4Md      ? parseGA4Log(ga4Md)            : null;
+  try { if (followerHistRaw) followerHistory = JSON.parse(followerHistRaw) as FollowerPoint[]; } catch { /* ignore */ }
 
-  // ── Kit 訂閱人數自動抓取（需 KIT_API_KEY env var）
-  try {
-    const kitKey = process.env.KIT_API_KEY;
-    if (kitKey) {
-      const kitRes = await fetch(
-        `https://api.convertkit.com/v3/subscribers?api_secret=${kitKey}&count=0`,
-        { next: { revalidate: 3600 } }
-      );
-      if (kitRes.ok) {
-        const kitData = await kitRes.json();
-        kitSubscribers = kitData.total_subscribers ?? null;
-      }
-    }
-  } catch { /* optional */ }
-
-  const tasks = parseTasks(tasksMd);
-  const p1Tasks = tasks.filter(t => t.priority === 'P1' || t.priority === 'P0');
-  const p2Tasks = tasks.filter(t => t.priority === 'P2');
+  const tasks    = parseTasks(tasksMd);
+  const p1Tasks  = tasks.filter(t => t.priority === 'P1' || t.priority === 'P0');
+  const p2Tasks  = tasks.filter(t => t.priority === 'P2');
   const avgHealth = systems.length
     ? (systems.reduce((s, sys) => s + sys.health_score, 0) / systems.length).toFixed(1)
     : '0';
+  const alertSystems = systems.filter(s => s.health_score <= 3);
+  const quickLinks   = systems.filter(s => s.url && (s.status === 'live' || s.status === 'active') && s.id !== 'SYS-07');
 
-  // Live systems with URL for quick links（排除儀表板本身，避免循環連結）
-  const quickLinks = systems.filter(
-    s => s.url && (s.status === 'live' || s.status === 'active') && s.id !== 'SYS-07'
-  );
+  const threadsFollowers = (systems.find(s => s.id === 'SYS-02') as any)?.current_followers ?? null;
+  const followerSparkData = (followerHistory as FollowerPoint[]).map(p => p.followers);
+  if (threadsFollowers && (followerHistory.length === 0 || (followerHistory as FollowerPoint[])[followerHistory.length - 1].followers !== threadsFollowers)) {
+    followerSparkData.push(threadsFollowers as number);
+  }
+
+  const _os = outreachStats as OutreachStats | null;
+  const outreachReplyRate = !_os ? '—'
+    : _os.sent > 0 ? `${Math.round((_os.replied / _os.sent) * 100)}%` : '—';
 
   return (
     <div className="space-y-6">
 
-      {/* 總覽數字 */}
+      {/* ── 健康警示（有問題才顯示）*/}
+      {alertSystems.length > 0 && (
+        <section>
+          <div className="rounded-xl px-4 py-3 space-y-1.5" style={{ backgroundColor: '#ef444411', border: '1px solid #ef444433' }}>
+            <div className="text-xs font-bold mb-1" style={{ color: '#ef4444' }}>⚠ 系統健康警示</div>
+            {alertSystems.map(s => (
+              <div key={s.id} className="flex items-center justify-between">
+                <span className="text-xs" style={{ color: '#ef4444' }}>{s.short_code} — 健康分 {s.health_score}/5</span>
+                <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{s.pending_tasks?.[0] ?? ''}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── 總覽數字 */}
       <section id="overview">
         <div className="grid grid-cols-3 gap-3 mb-3">
           {[
@@ -249,39 +310,19 @@ export default async function Home() {
             { label: '平均健康', value: avgHealth + '/5', icon: '❤️' },
             { label: 'P1 任務', value: String(p1Tasks.length), icon: '⚡' },
           ].map(stat => (
-            <div
-              key={stat.label}
-              className="rounded-xl p-4 text-center"
-              style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
-            >
+            <div key={stat.label} className="rounded-xl p-4 text-center" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}>
               <div className="text-lg mb-0.5">{stat.icon}</div>
-              <div className="text-2xl font-bold" style={{ color: 'var(--accent)' }}>
-                {stat.value}
-              </div>
-              <div className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-                {stat.label}
-              </div>
+              <div className="text-2xl font-bold" style={{ color: 'var(--accent)' }}>{stat.value}</div>
+              <div className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{stat.label}</div>
             </div>
           ))}
         </div>
-
-        {/* 快速連結 */}
         {quickLinks.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {quickLinks.map(s => (
-              <a
-                key={s.id}
-                href={s.url!}
-                target="_blank"
-                rel="noopener noreferrer"
+              <a key={s.id} href={s.url!} target="_blank" rel="noopener noreferrer"
                 className="text-xs font-semibold px-3 py-1.5 rounded-full"
-                style={{
-                  backgroundColor: 'var(--bg-card)',
-                  border: '1px solid var(--border)',
-                  color: 'var(--text-secondary)',
-                  textDecoration: 'none',
-                }}
-              >
+                style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)', textDecoration: 'none' }}>
                 {s.short_code} ↗
               </a>
             ))}
@@ -289,97 +330,102 @@ export default async function Home() {
         )}
       </section>
 
-      {/* 數據快覽 */}
-      <section id="metrics">
+      {/* ── 七部門 KPI 總覽 */}
+      <section id="kpi">
         <h2 className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--text-secondary)' }}>
-          數據快覽
+          七部門 KPI 總覽
         </h2>
         <div className="grid grid-cols-2 gap-3">
-          {/* 社群 */}
-          <div className="rounded-xl px-3 py-3 space-y-2" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-            <div className="text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>📣 社群</div>
-            {[
-              {
-                label: 'Threads',
-                value: (systems.find(s => s.id === 'SYS-02') as any)?.current_followers?.toLocaleString() ?? '—',
-                unit: '人'
-              },
-              {
-                label: 'LINE 好友',
-                value: lineFollowers != null ? lineFollowers.toLocaleString() : ((inventory as any)?.line_followers?.toLocaleString() ?? '—'),
-                unit: '人',
-                note: lineFollowers != null ? '自動' : (process.env.LINE_CHANNEL_ACCESS_TOKEN ? null : '需設定 TOKEN')
-              },
-              {
-                label: 'Kit 訂閱',
-                value: kitSubscribers != null ? kitSubscribers.toLocaleString() : '—',
-                unit: '人',
-                note: kitSubscribers != null ? '自動' : (process.env.KIT_API_KEY ? null : '需設定 KEY')
-              },
-            ].map(row => (
-              <div key={row.label} className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{row.label}</span>
-                  {(row as any).note && (
-                    <span className="text-xs" style={{ color: (row as any).note === '自動' ? '#22c55e' : '#f97316', fontSize: '10px' }}>
-                      {(row as any).note}
-                    </span>
-                  )}
-                </div>
-                <span className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
-                  {row.value}<span className="text-xs ml-0.5" style={{ color: 'var(--text-secondary)' }}>{row.unit}</span>
-                </span>
-              </div>
-            ))}
-          </div>
-          {/* 診斷產品 */}
-          <div className="rounded-xl px-3 py-3 space-y-2" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>🔬 診斷</span>
-              {ga4Live ? (
-                <span className="text-xs" style={{ color: '#22c55e', fontSize: '10px' }}>自動・{ga4Live.period}</span>
-              ) : ga4Row ? (
-                <span className="text-xs" style={{ color: '#f97316', fontSize: '10px' }}>手動週報</span>
-              ) : null}
-            </div>
-            {ga4Live ? [
-              { label: '診斷開始', value: String(ga4Live.diagnoseStarted), unit: '次' },
-              { label: '診斷完成', value: String(ga4Live.diagnoseCompleted), unit: '次' },
-              { label: '完成率',   value: ga4Live.completeRate, unit: '' },
-              { label: '升級點擊', value: String(ga4Live.upsellClicked), unit: '次' },
-              { label: '轉換率',   value: ga4Live.convRate, unit: '' },
-            ].map(row => (
-              <div key={row.label} className="flex items-center justify-between">
-                <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{row.label}</span>
-                <span className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
-                  {row.value}{row.unit && <span className="text-xs ml-0.5" style={{ color: 'var(--text-secondary)' }}>{row.unit}</span>}
-                </span>
-              </div>
-            )) : ga4Row ? [
-              { label: '診斷完成', value: ga4Row.diagnoseComplete, unit: '次' },
-              { label: '完成率',   value: ga4Row.completeRate, unit: '' },
-              { label: '升級點擊', value: ga4Row.upsellClick, unit: '次' },
-              { label: '轉換率',   value: ga4Row.convRate, unit: '' },
-            ].map(row => (
-              <div key={row.label} className="flex items-center justify-between">
-                <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{row.label}</span>
-                <span className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
-                  {row.value}{row.unit && <span className="text-xs ml-0.5" style={{ color: 'var(--text-secondary)' }}>{row.unit}</span>}
-                </span>
-              </div>
-            )) : (
-              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                尚無數據 — 設定 GOOGLE_SERVICE_ACCOUNT_JSON 啟用自動抓取
-              </p>
-            )}
-          </div>
+
+          {/* 官網 */}
+          <KpiCard icon="🌐" title="官網" health={systems.find(s => s.id === 'SYS-01')?.health_score}
+            rows={websiteGA4 ? [
+              { label: 'Sessions', value: websiteGA4.sessions.toLocaleString(), unit: '次', note: '自動' },
+              { label: '活躍用戶', value: websiteGA4.users.toLocaleString(), unit: '人' },
+              { label: '頁面瀏覽', value: websiteGA4.pageViews.toLocaleString(), unit: '次' },
+            ] : [
+              { label: 'UV/Sessions', value: '—', note: '設定 GA4 啟用' },
+            ]}
+          />
+
+          {/* 看板（Threads）*/}
+          <KpiCard icon="📊" title="看板" health={systems.find(s => s.id === 'SYS-02')?.health_score}
+            sparkData={followerSparkData.length >= 2 ? followerSparkData : undefined}
+            rows={[
+              { label: 'Threads 追蹤', value: threadsFollowers ? threadsFollowers.toLocaleString() : '—', unit: '人' },
+              { label: '趨勢', value: followerSparkData.length >= 2
+                  ? (followerSparkData[followerSparkData.length - 1] - followerSparkData[0] >= 0 ? '↑' : '↓') +
+                    ' ' + Math.abs(followerSparkData[followerSparkData.length - 1] - followerSparkData[0])
+                  : '—', unit: '' },
+            ]}
+          />
+
+          {/* 診斷 */}
+          <KpiCard icon="🔬" title="診斷" health={systems.find(s => s.id === 'SYS-03')?.health_score}
+            rows={ga4Live ? [
+              { label: '診斷開始', value: String(ga4Live.diagnoseStarted), unit: '次', note: '自動' },
+              { label: '完成率', value: ga4Live.completeRate, unit: '' },
+              { label: 'Upsell 率', value: ga4Live.convRate, unit: '' },
+            ] : ga4Row ? [
+              { label: '完成率', value: ga4Row.completeRate, note: '手動' },
+              { label: 'Upsell 率', value: ga4Row.convRate },
+            ] : [
+              { label: '完成率', value: '—', note: '設定 GA4 啟用' },
+            ]}
+          />
+
+          {/* 預約 */}
+          <KpiCard icon="📅" title="預約" health={systems.find(s => s.id === 'SYS-04')?.health_score}
+            rows={bookingStats ? [
+              { label: '本週新預約', value: String(bookingStats.thisWeek), unit: '筆', note: '自動' },
+              { label: '本月累計', value: String(bookingStats.thisMonth), unit: '筆' },
+              { label: '歷史總計', value: String(bookingStats.total), unit: '筆' },
+            ] : [
+              { label: '本週新預約', value: '—', note: '設定 BOOKING_STATS_URL 啟用' },
+            ]}
+          />
+
+          {/* LINE */}
+          <KpiCard icon="💬" title="LINE" health={systems.find(s => s.id === 'SYS-05')?.health_score}
+            rows={[
+              { label: '好友數', value: lineFollowers != null ? lineFollowers.toLocaleString() : ((inventory as any)?.line_followers?.toLocaleString() ?? '—'), unit: '人',
+                note: lineFollowers != null ? '自動' : undefined },
+              { label: 'Kit 訂閱', value: kitSubscribers != null ? kitSubscribers.toLocaleString() : '—', unit: '人',
+                note: kitSubscribers != null ? '自動' : undefined },
+            ]}
+          />
+
+          {/* 外展 */}
+          <KpiCard icon="📤" title="外展" health={systems.find(s => s.id === 'SYS-06')?.health_score}
+            rows={outreachStats ? [
+              { label: '累計發信', value: String(outreachStats.sent), unit: '封' },
+              { label: '回覆率', value: outreachReplyRate },
+              { label: '洽談中', value: String(outreachStats.negotiating), unit: '組' },
+            ] : [
+              { label: '累計發信', value: '—' },
+            ]}
+          />
+
         </div>
+
+        {/* 財務一行摘要 */}
+        {financeSummary && (
+          <div className="mt-3 rounded-xl px-4 py-3 flex items-center justify-between"
+            style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+            <span className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>💰 本月財務</span>
+            <div className="flex items-center gap-4">
+              <span className="text-xs">收入 <span className="font-bold" style={{ color: '#22c55e' }}>NT${financeSummary.income}</span></span>
+              <span className="text-xs">支出 <span className="font-bold" style={{ color: '#ef4444' }}>NT${financeSummary.expense}</span></span>
+              <span className="text-xs">淨利 <span className="font-bold" style={{ color: 'var(--accent)' }}>{financeSummary.profit}</span></span>
+            </div>
+          </div>
+        )}
       </section>
 
-      {/* 指令中心 */}
+      {/* ── 指令中心 */}
       <CommandCenter />
 
-      {/* P1 任務 */}
+      {/* ── P1 任務 */}
       <section id="tasks">
         <h2 className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: '#f97316' }}>
           ⚡ 本週必須完成
@@ -387,15 +433,10 @@ export default async function Home() {
         {p1Tasks.length > 0 ? (
           <div className="space-y-2">
             {p1Tasks.map((t, i) => (
-              <div
-                key={i}
-                className="rounded-xl px-4 py-3 flex items-start gap-3"
-                style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
-              >
-                <span
-                  className="text-xs font-bold px-2 py-0.5 rounded mt-0.5 shrink-0"
-                  style={{ backgroundColor: priorityColor(t.priority) + '22', color: priorityColor(t.priority) }}
-                >
+              <div key={i} className="rounded-xl px-4 py-3 flex items-start gap-3"
+                style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                <span className="text-xs font-bold px-2 py-0.5 rounded mt-0.5 shrink-0"
+                  style={{ backgroundColor: priorityColor(t.priority) + '22', color: priorityColor(t.priority) }}>
                   {t.priority}
                 </span>
                 <div>
@@ -406,40 +447,24 @@ export default async function Home() {
             ))}
           </div>
         ) : (
-          <div
-            className="rounded-xl px-4 py-3 text-sm"
-            style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', color: '#22c55e' }}
-          >
+          <div className="rounded-xl px-4 py-3 text-sm"
+            style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', color: '#22c55e' }}>
             ✓ 本週無緊急任務
           </div>
         )}
-
-        {/* P2 任務 */}
         {p2Tasks.length > 0 && (
           <div className="mt-3">
-            <h3
-              className="text-xs font-semibold tracking-widest uppercase mb-2 mt-4"
-              style={{ color: 'var(--text-secondary)' }}
-            >
+            <h3 className="text-xs font-semibold tracking-widest uppercase mb-2 mt-4" style={{ color: 'var(--text-secondary)' }}>
               本週推進
             </h3>
             <div className="space-y-2">
               {p2Tasks.map((t, i) => (
-                <div
-                  key={i}
-                  className="rounded-xl px-4 py-3 flex items-start gap-3"
-                  style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
-                >
-                  <span
-                    className="text-xs font-bold px-2 py-0.5 rounded mt-0.5 shrink-0"
-                    style={{ backgroundColor: '#eab30822', color: '#eab308' }}
-                  >
-                    P2
-                  </span>
+                <div key={i} className="rounded-xl px-4 py-3 flex items-start gap-3"
+                  style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded mt-0.5 shrink-0"
+                    style={{ backgroundColor: '#eab30822', color: '#eab308' }}>P2</span>
                   <div>
-                    <div className="text-xs font-semibold mb-0.5" style={{ color: 'var(--text-secondary)' }}>
-                      {t.system}
-                    </div>
+                    <div className="text-xs font-semibold mb-0.5" style={{ color: 'var(--text-secondary)' }}>{t.system}</div>
                     <div className="text-sm" style={{ color: 'var(--text-primary)' }}>{t.content}</div>
                   </div>
                 </div>
@@ -449,169 +474,58 @@ export default async function Home() {
         )}
       </section>
 
-      {/* 近期內容排程 */}
+      {/* ── 近期內容排程 */}
       <section id="content">
-        <h2
-          className="text-xs font-semibold tracking-widest uppercase mb-3"
-          style={{ color: 'var(--text-secondary)' }}
-        >
+        <h2 className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--text-secondary)' }}>
           近期內容排程
         </h2>
         {contentItems.length > 0 ? (
-          <div
-            className="rounded-xl px-4 py-2 divide-y"
-            style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
-          >
+          <div className="rounded-xl px-4 py-2 divide-y" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}>
             {contentItems.map((item, i) => (
               <div key={i} className="flex items-center justify-between py-2.5 gap-3">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="text-base shrink-0">{typeIcon(item.type)}</span>
                   <div className="min-w-0">
-                    <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-                      {item.date}
-                    </span>
-                    <span className="text-xs ml-2" style={{ color: 'var(--text-secondary)' }}>
-                      {item.type}
-                    </span>
-                    <div className="text-sm truncate" style={{ color: 'var(--text-primary)' }}>
-                      {item.topic}
-                    </div>
+                    <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>{item.date}</span>
+                    <span className="text-xs ml-2" style={{ color: 'var(--text-secondary)' }}>{item.type}</span>
+                    <div className="text-sm truncate" style={{ color: 'var(--text-primary)' }}>{item.topic}</div>
                   </div>
                 </div>
-                <span
-                  className="text-xs font-semibold px-2 py-0.5 rounded shrink-0"
-                  style={{ backgroundColor: statusColor(item.status) + '22', color: statusColor(item.status) }}
-                >
+                <span className="text-xs font-semibold px-2 py-0.5 rounded shrink-0"
+                  style={{ backgroundColor: statusColor(item.status) + '22', color: statusColor(item.status) }}>
                   {item.status}
                 </span>
               </div>
             ))}
           </div>
         ) : (
-          <div
-            className="rounded-xl px-4 py-3 text-sm"
-            style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
-          >
+          <div className="rounded-xl px-4 py-3 text-sm"
+            style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
             近 30 天內無排程內容 — 請更新 content/content-calendar.md
           </div>
         )}
       </section>
 
-      {/* 外展進度 + 財務（並排） */}
-      <div className="grid grid-cols-2 gap-3">
-        <section id="outreach">
-          <h2
-            className="text-xs font-semibold tracking-widest uppercase mb-3"
-            style={{ color: 'var(--text-secondary)' }}
-          >
-            外展進度
-          </h2>
-          {outreachStats ? (
-            <div
-              className="rounded-xl px-3 py-3 space-y-2"
-              style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', height: 'calc(100% - 28px)' }}
-            >
-              {[
-                { label: '累計寄出', value: outreachStats.sent, unit: '封' },
-                { label: '已回覆', value: outreachStats.replied, unit: '封' },
-                { label: '進入洽談', value: outreachStats.negotiating, unit: '組' },
-              ].map(stat => (
-                <div key={stat.label} className="flex items-center justify-between">
-                  <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                    {stat.label}
-                  </span>
-                  <span className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
-                    {stat.value}
-                    <span className="text-xs ml-0.5" style={{ color: 'var(--text-secondary)' }}>
-                      {stat.unit}
-                    </span>
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div
-              className="rounded-xl px-3 py-3 text-xs"
-              style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
-            >
-              無法讀取外展資料
-            </div>
-          )}
-        </section>
-
-        <section id="finance">
-          <h2
-            className="text-xs font-semibold tracking-widest uppercase mb-3"
-            style={{ color: 'var(--text-secondary)' }}
-          >
-            本月財務
-          </h2>
-          {financeSummary ? (
-            <div
-              className="rounded-xl px-3 py-3 space-y-2"
-              style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', height: 'calc(100% - 28px)' }}
-            >
-              {[
-                { label: '收入', value: 'NT$' + financeSummary.income, color: '#22c55e' },
-                { label: '支出', value: 'NT$' + financeSummary.expense, color: '#ef4444' },
-                { label: '淨利', value: financeSummary.profit, color: 'var(--accent)' },
-              ].map(stat => (
-                <div key={stat.label} className="flex items-center justify-between">
-                  <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                    {stat.label}
-                  </span>
-                  <span className="text-xs font-bold" style={{ color: stat.color }}>
-                    {stat.value}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div
-              className="rounded-xl px-3 py-3 text-xs"
-              style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
-            >
-              無法讀取財務資料
-            </div>
-          )}
-        </section>
-      </div>
-
-      {/* 系統狀態 */}
+      {/* ── 系統狀態 */}
       <section id="systems">
-        <h2
-          className="text-xs font-semibold tracking-widest uppercase mb-3"
-          style={{ color: 'var(--text-secondary)' }}
-        >
+        <h2 className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--text-secondary)' }}>
           系統狀態 <span className="normal-case font-normal ml-1">（點擊展開詳情）</span>
         </h2>
         <div className="space-y-2">
-          {systems.map((sys) => (
-            <SystemCard key={sys.id} sys={sys} />
-          ))}
+          {systems.map((sys) => <SystemCard key={sys.id} sys={sys} />)}
         </div>
       </section>
 
-      {/* 部門架構 */}
+      {/* ── 部門架構 */}
       <section id="departments">
-        <h2
-          className="text-xs font-semibold tracking-widest uppercase mb-3"
-          style={{ color: 'var(--text-secondary)' }}
-        >
+        <h2 className="text-xs font-semibold tracking-widest uppercase mb-3" style={{ color: 'var(--text-secondary)' }}>
           部門架構
         </h2>
-        <div
-          className="rounded-xl px-4 py-2 divide-y"
-          style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
-        >
+        <div className="rounded-xl px-4 py-2 divide-y" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}>
           {departments.map(d => (
             <div key={d.dept} className="flex items-center justify-between py-2.5">
-              <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                {d.dept}
-              </span>
-              <span className="text-xs text-right" style={{ color: 'var(--text-secondary)' }}>
-                {d.role}
-              </span>
+              <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{d.dept}</span>
+              <span className="text-xs text-right" style={{ color: 'var(--text-secondary)' }}>{d.role}</span>
             </div>
           ))}
         </div>

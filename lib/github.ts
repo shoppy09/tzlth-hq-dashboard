@@ -45,3 +45,11 @@ export async function getGA4Log() {
 export async function getSocialLog() {
   return fetchFile('social/weekly-log.md');
 }
+
+export async function getFollowerHistory() {
+  return fetchFile('social/followers-history.json');
+}
+
+export async function getDailyLog() {
+  return fetchFile('reports/daily-log.md');
+}
