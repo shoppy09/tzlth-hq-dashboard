@@ -2,15 +2,15 @@ const OWNER = 'shoppy09';
 const REPO = 'tzlth-hq';
 const TOKEN = process.env.GITHUB_TOKEN;
 
-async function fetchFile(path: string): Promise<string> {
+async function fetchFile(path: string, repo = REPO, ttl = 60): Promise<string> {
   const res = await fetch(
-    `https://api.github.com/repos/${OWNER}/${REPO}/contents/${path}`,
+    `https://api.github.com/repos/${OWNER}/${repo}/contents/${path}`,
     {
       headers: {
         Authorization: `Bearer ${TOKEN}`,
         Accept: 'application/vnd.github.v3.raw',
       },
-      next: { revalidate: 300 }, // refresh every 5 minutes
+      next: { revalidate: ttl }, // refresh every 60 seconds by default
     }
   );
   if (!res.ok) throw new Error(`Failed to fetch ${path}: ${res.status}`);
@@ -47,7 +47,16 @@ export async function getSocialLog() {
 }
 
 export async function getFollowerHistory() {
-  return fetchFile('social/followers-history.json');
+  // Try threads-dashboard repo first (updated by auto-fetch.bat), fall back to tzlth-hq
+  try {
+    return await fetchFile('follower-history.json', 'tzlth-threads-dashboard', 60);
+  } catch {
+    return fetchFile('social/followers-history.json');
+  }
+}
+
+export async function getDailyChecklist() {
+  return fetchFile('dev/daily-checklist.md');
 }
 
 export async function getSocialMetrics() {

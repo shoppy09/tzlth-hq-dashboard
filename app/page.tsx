@@ -1,8 +1,9 @@
-import { getInventory, getTasksMd, getContentCalendar, getOutreachLog, getFinanceReport, getGA4Log, getFollowerHistory, getSocialMetrics } from '@/lib/github';
+import { getInventory, getTasksMd, getContentCalendar, getOutreachLog, getFinanceReport, getGA4Log, getFollowerHistory, getSocialMetrics, getDailyChecklist } from '@/lib/github';
 import { getDiagnosisGA4Data, getWebsiteGA4Data, DiagnosisGA4Data, WebsiteGA4Data } from '@/lib/ga4';
 import { parseTasks } from '@/lib/parse-tasks';
 import { SystemCard } from '@/components/SystemCard';
 import { CommandCenter } from '@/components/CommandCenter';
+import { DailyChecklist } from '@/components/DailyChecklist';
 import { System } from '@/lib/types';
 
 // ─── Type definitions ──────────────────────────────────────
@@ -41,7 +42,12 @@ function parseContentCalendar(md: string): ContentItem[] {
     if (inTable && line.startsWith('|')) {
       const cols = line.split('|').map(s => s.trim()).filter(Boolean);
       if (cols.length >= 4 && cols[0] !== '-' && cols[0] !== '' && !cols[0].includes('---')) {
-        items.push({ date: cols[0], type: cols[1], topic: cols[2], status: cols[4] ?? cols[3] });
+        // New 7-col format: 日期/類型/P碼/主題/內容方向/狀態/連結
+        // Old 4-col format: 日期/類型/主題/狀態
+        const isNewFormat = cols.length >= 6;
+        const topic  = isNewFormat ? cols[3] : cols[2];
+        const status = isNewFormat ? cols[5] : (cols[4] ?? cols[3]);
+        items.push({ date: cols[0], type: cols[1], topic, status });
       }
     } else if (inTable && !line.startsWith('|')) { inTable = false; }
   }
@@ -100,8 +106,9 @@ function priorityColor(p: string) {
 }
 function statusColor(s: string) {
   if (s === '已發布' || s === '已發') return '#22c55e';
-  if (s === '排程中') return '#3b82f6';
-  if (s === '草稿') return '#f97316';
+  if (s === '排程中' || s === '待發布' || s === '待發') return '#3b82f6';
+  if (s === '草稿' || s === '待草稿') return '#f97316';
+  if (s === '待規劃') return '#94a3b8';
   return '#94a3b8';
 }
 function typeIcon(t: string) {
@@ -198,6 +205,7 @@ export default async function Home() {
   let systems: System[] = [];
   let inventory: Record<string, unknown> = {};
   let tasksMd = '';
+  let dailyChecklistMd = '';
   let contentItems: ContentItem[]    = [];
   let outreachStats: OutreachStats   | null = null;
   let financeSummary: FinanceSummary | null = null;
@@ -209,6 +217,7 @@ export default async function Home() {
     inventory = await getInventory();
     systems   = inventory.systems as System[];
     tasksMd   = await getTasksMd();
+    try { dailyChecklistMd = await getDailyChecklist(); } catch { /* optional */ }
   } catch {
     return (
       <div className="text-center py-20" style={{ color: '#ef4444' }}>
@@ -297,6 +306,9 @@ export default async function Home() {
 
   return (
     <div className="space-y-6">
+
+      {/* ── 每日任務清單（最頂部）*/}
+      {dailyChecklistMd && <DailyChecklist md={dailyChecklistMd} />}
 
       {/* ── 健康警示（有問題才顯示）*/}
       {alertSystems.length > 0 && (
