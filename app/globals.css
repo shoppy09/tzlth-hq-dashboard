@@ -1,34 +1,59 @@
 @import "tailwindcss";
 
 :root {
-  --bg-primary: #0a0e1a;
-  --bg-card: #111827;
-  --border: #1e293b;
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --accent: #3b82f6;
+  --bg-primary: #090d18;
+  --bg-card: #0f1623;
+  --bg-hover: #141e30;
+  --border: #1a2540;
+  --border-bright: #2d4070;
+  --text-primary: #e2e8f0;
+  --text-secondary: #64748b;
+  --text-muted: #3d4f6e;
+  --accent: #4f8ef7;
+  --accent-bg: rgba(79, 142, 247, 0.10);
+  --green: #22c55e;
+  --yellow: #eab308;
+  --orange: #f97316;
+  --red: #ef4444;
 }
 
-html {
-  scroll-behavior: smooth;
-}
+html { scroll-behavior: smooth; }
 
 body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Noto Sans TC', sans-serif;
 }
 
-/* Command center input placeholder */
-.cmd-input::placeholder {
-  color: #475569;
+/* Slim scrollbar */
+::-webkit-scrollbar { width: 3px; height: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #4a6490; }
+
+/* Hover-transition on interactive cards */
+.hover-card {
+  transition: background-color 0.14s ease, border-color 0.14s ease;
+}
+.hover-card:hover {
+  background-color: var(--bg-hover) !important;
+  border-color: var(--border-bright) !important;
 }
 
-.cmd-input:focus {
+/* Link pills (quick links / nav) */
+.link-pill {
+  transition: background-color 0.14s ease, color 0.14s ease, border-color 0.14s ease;
+}
+.link-pill:hover {
+  background-color: var(--accent-bg) !important;
   border-color: var(--accent) !important;
+  color: var(--accent) !important;
 }
 
-/* Command output markdown helpers */
+/* Command center */
+.cmd-input::placeholder { color: #3d4f6e; }
+.cmd-input:focus { border-color: var(--accent) !important; }
+
 .cmd-output .cmd-h2 {
   display: block;
   font-size: 0.8rem;
@@ -43,12 +68,12 @@ body {
   display: block;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #94a3b8;
+  color: #64748b;
   margin-top: 0.5rem;
   margin-bottom: 0.2rem;
 }
 
 .cmd-output strong {
-  color: #f1f5f9;
+  color: #e2e8f0;
   font-weight: 700;
 }
