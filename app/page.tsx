@@ -576,7 +576,7 @@ export default async function Home() {
         {contentItems.length > 0 ? (
           <div
             className="rounded-xl divide-y overflow-hidden"
-            style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', divideColor: 'var(--border)' }}
+            style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
           >
             {contentItems.map((item, i) => (
               <div key={i} className="flex items-center justify-between px-4 py-3 gap-3">
