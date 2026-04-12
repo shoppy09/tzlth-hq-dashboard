@@ -50,6 +50,10 @@ export async function getFollowerHistory() {
   return fetchFile('social/followers-history.json');
 }
 
+export async function getSocialMetrics() {
+  return fetchFile('social/metrics.json');
+}
+
 export async function getDailyLog() {
   return fetchFile('reports/daily-log.md');
 }

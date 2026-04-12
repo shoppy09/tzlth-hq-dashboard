@@ -1,4 +1,4 @@
-import { getInventory, getTasksMd, getContentCalendar, getOutreachLog, getFinanceReport, getGA4Log, getFollowerHistory } from '@/lib/github';
+import { getInventory, getTasksMd, getContentCalendar, getOutreachLog, getFinanceReport, getGA4Log, getFollowerHistory, getSocialMetrics } from '@/lib/github';
 import { getDiagnosisGA4Data, getWebsiteGA4Data, DiagnosisGA4Data, WebsiteGA4Data } from '@/lib/ga4';
 import { parseTasks } from '@/lib/parse-tasks';
 import { SystemCard } from '@/components/SystemCard';
@@ -12,6 +12,14 @@ interface FinanceSummary { income: string; expense: string; profit: string; }
 interface GA4WeekRow { week: string; diagnoseStart: string; diagnoseComplete: string; completeRate: string; upsellClick: string; convRate: string; }
 interface FollowerPoint { date: string; followers: number; }
 interface BookingStats { total: number; thisWeek: number; thisMonth: number; }
+interface SocialMetrics {
+  last_updated?: string;
+  threads?: { followers?: number };
+  line?: { friends?: number };
+  vocus?: { followers?: number; articles_total?: number; monthly_reads?: number };
+  facebook?: { followers?: number };
+  instagram?: { followers?: number };
+}
 
 // ─── Parsers ───────────────────────────────────────────────
 function parseItemDate(dateStr: string): Date | null {
@@ -244,7 +252,7 @@ export default async function Home() {
   const [
     calMd, outreachMd, financeMd, ga4Md,
     ga4Live, websiteGA4,
-    followerHistRaw,
+    followerHistRaw, socialMetricsRaw,
     lineFollowers, kitSubscribers, bookingStats,
   ] = await Promise.all([
     safe(getContentCalendar()),
@@ -254,6 +262,7 @@ export default async function Home() {
     safe(getDiagnosisGA4Data()),
     safe(getWebsiteGA4Data()),
     safe(getFollowerHistory()),
+    safe(getSocialMetrics()),
     safe(fetchLine()),
     safe(fetchKit()),
     safe(fetchBooking()),
@@ -264,6 +273,8 @@ export default async function Home() {
   financeSummary = financeMd  ? parseFinanceReport(financeMd) : null;
   ga4Row         = ga4Md      ? parseGA4Log(ga4Md)            : null;
   try { if (followerHistRaw) followerHistory = JSON.parse(followerHistRaw) as FollowerPoint[]; } catch { /* ignore */ }
+  let socialMetrics: SocialMetrics | null = null;
+  try { if (socialMetricsRaw) socialMetrics = JSON.parse(socialMetricsRaw) as SocialMetrics; } catch { /* ignore */ }
 
   const tasks    = parseTasks(tasksMd);
   const p1Tasks  = tasks.filter(t => t.priority === 'P1' || t.priority === 'P0');
@@ -385,13 +396,14 @@ export default async function Home() {
             ]}
           />
 
-          {/* LINE */}
-          <KpiCard icon="💬" title="LINE" health={systems.find(s => s.id === 'SYS-05')?.health_score}
+          {/* LINE + 社群平台 */}
+          <KpiCard icon="💬" title="社群平台" health={systems.find(s => s.id === 'SYS-05')?.health_score}
             rows={[
-              { label: '好友數', value: lineFollowers != null ? lineFollowers.toLocaleString() : ((inventory as any)?.line_followers?.toLocaleString() ?? '—'), unit: '人',
-                note: lineFollowers != null ? '自動' : undefined },
-              { label: 'Kit 訂閱', value: kitSubscribers != null ? kitSubscribers.toLocaleString() : '—', unit: '人',
-                note: kitSubscribers != null ? '自動' : undefined },
+              { label: 'LINE 好友', value: lineFollowers != null ? lineFollowers.toLocaleString() : ((socialMetrics?.line?.friends ?? (inventory as any)?.line_followers)?.toLocaleString() ?? '—'), unit: '人',
+                note: lineFollowers != null ? '自動' : '手動' },
+              { label: '方格子追蹤', value: socialMetrics?.vocus?.followers != null ? socialMetrics.vocus.followers.toLocaleString() : '—', unit: '人', note: '手動' },
+              { label: 'Facebook', value: socialMetrics?.facebook?.followers != null ? socialMetrics.facebook.followers.toLocaleString() : '—', unit: '人', note: '手動' },
+              { label: 'Instagram', value: socialMetrics?.instagram?.followers != null ? socialMetrics.instagram.followers.toLocaleString() : '—', unit: '人', note: '手動' },
             ]}
           />
 
