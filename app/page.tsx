@@ -1,4 +1,4 @@
-import { getInventory, getTasksMd, getContentCalendar, getOutreachLog, getFinanceReport, getGA4Log, getFollowerHistory, getSocialMetrics, getDailyChecklist } from '@/lib/github';
+import { getInventory, getTasksMd, getContentCalendar, getOutreachLog, getFinanceReport, getGA4Log, getFollowerHistory, getSocialMetrics, getDailyChecklist, getKnowledgeBase, KnowledgeFolder } from '@/lib/github';
 import { getDiagnosisGA4Data, getWebsiteGA4Data } from '@/lib/ga4';
 import { parseTasks } from '@/lib/parse-tasks';
 import { SystemCard } from '@/components/SystemCard';
@@ -238,6 +238,7 @@ export default async function Home() {
   let financeSummary: FinanceSummary | null = null;
   let ga4Row: GA4WeekRow             | null = null;
   let followerHistory: FollowerPoint[]      = [];
+  let knowledgeFolders: KnowledgeFolder[]   = [];
 
   // ── Core (required) ──────────────────────────────────
   try {
@@ -290,6 +291,7 @@ export default async function Home() {
     ga4Live, websiteGA4,
     followerHistRaw, socialMetricsRaw,
     lineFollowers, , bookingStats,
+    knowledgeResult,
   ] = await Promise.all([
     safe(getContentCalendar()),
     safe(getOutreachLog()),
@@ -302,7 +304,9 @@ export default async function Home() {
     safe(fetchLine()),
     safe(fetchKit()),
     safe(fetchBooking()),
+    safe(getKnowledgeBase()),
   ]);
+  if (knowledgeResult) knowledgeFolders = knowledgeResult;
 
   contentItems   = calMd      ? parseContentCalendar(calMd)   : [];
   outreachStats  = outreachMd ? parseOutreachLog(outreachMd)  : null;
@@ -615,6 +619,81 @@ export default async function Home() {
         <div className="space-y-2">
           {systems.map((sys) => <SystemCard key={sys.id} sys={sys} />)}
         </div>
+      </section>
+
+      {/* ── 知識庫 */}
+      <section id="knowledge">
+        <SectionHeader icon="📚" title="知識庫" note={knowledgeFolders.length > 0 ? `${knowledgeFolders.reduce((s, f) => s + f.files.length, 0)} 份文件` : undefined} />
+        {knowledgeFolders.length === 0 ? (
+          <div className="rounded-xl px-4 py-3 text-sm" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
+            知識庫讀取中…
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {knowledgeFolders.map(folder => (
+              <details
+                key={folder.key}
+                className="rounded-xl overflow-hidden"
+                style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
+              >
+                <summary
+                  className="flex items-center justify-between px-4 py-3 cursor-pointer select-none"
+                  style={{ listStyle: 'none', color: 'var(--text-primary)' }}
+                >
+                  <span className="text-sm font-semibold">{folder.icon} {folder.label}</span>
+                  <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--border)', color: 'var(--text-secondary)' }}>
+                    {folder.files.length} 份 ▾
+                  </span>
+                </summary>
+                <div style={{ borderTop: '1px solid var(--border)' }}>
+                  {folder.files.length === 0 ? (
+                    <div className="px-4 py-2 text-xs" style={{ color: 'var(--text-secondary)' }}>（尚無文件）</div>
+                  ) : (
+                    folder.files.map(file => (
+                      <details
+                        key={file.name}
+                        style={{ borderBottom: '1px solid var(--border)' }}
+                      >
+                        <summary
+                          className="flex items-center gap-2 px-4 py-2.5 cursor-pointer select-none"
+                          style={{ listStyle: 'none', color: 'var(--text-secondary)' }}
+                        >
+                          <span className="text-xs">📄</span>
+                          <span className="text-sm" style={{ color: 'var(--text-primary)' }}>{file.name}</span>
+                          {file.content && (
+                            <span className="text-xs ml-auto" style={{ color: 'var(--text-secondary)' }}>點擊展開 ▾</span>
+                          )}
+                        </summary>
+                        {file.content ? (
+                          <div
+                            className="px-4 pb-4 pt-2"
+                            style={{ backgroundColor: 'var(--bg-primary)' }}
+                          >
+                            <pre
+                              className="text-xs leading-relaxed whitespace-pre-wrap"
+                              style={{
+                                color: 'var(--text-primary)',
+                                fontFamily: '"Noto Sans TC", "PingFang TC", sans-serif',
+                                maxHeight: '400px',
+                                overflowY: 'auto',
+                              }}
+                            >
+                              {file.content}
+                            </pre>
+                          </div>
+                        ) : (
+                          <div className="px-4 py-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                            內容請至 GitHub 查看
+                          </div>
+                        )}
+                      </details>
+                    ))
+                  )}
+                </div>
+              </details>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* ── 部門架構 */}

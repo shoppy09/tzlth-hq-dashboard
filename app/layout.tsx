@@ -14,6 +14,7 @@ const navItems = [
   { label: '外展',  href: '#outreach' },
   { label: '財務',  href: '#finance' },
   { label: '系統',  href: '#systems' },
+  { label: '知識庫', href: '#knowledge' },
   { label: '部門',  href: '#departments' },
 ];
 
