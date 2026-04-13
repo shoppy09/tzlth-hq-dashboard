@@ -9,6 +9,20 @@
 
 import { GoogleAuth } from 'google-auth-library';
 
+/**
+ * Vercel 環境變數貼上 JSON 時，private_key 可能含有字面換行符（0x0A）
+ * 導致 JSON.parse 拋出 SyntaxError。
+ * 此函式先嘗試直接 parse；失敗時將字面換行轉為 \n 再 parse。
+ */
+function safeParseCredentials(credJson: string) {
+  try {
+    return JSON.parse(credJson);
+  } catch {
+    // private_key 含字面換行 → 先 escape 再 parse
+    return JSON.parse(credJson.replace(/\n/g, '\\n'));
+  }
+}
+
 export interface DiagnosisGA4Data {
   diagnoseStarted: number;
   diagnoseCompleted: number;
@@ -31,7 +45,7 @@ export async function getWebsiteGA4Data(): Promise<WebsiteGA4Data | null> {
   const credJson   = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
   if (!propertyId || !credJson) return null;
   try {
-    const credentials = JSON.parse(credJson);
+    const credentials = safeParseCredentials(credJson);
     const auth = new GoogleAuth({ credentials, scopes: ['https://www.googleapis.com/auth/analytics.readonly'] });
     const client = await auth.getClient();
     const tokenResponse = await client.getAccessToken();
@@ -79,7 +93,7 @@ export async function getDiagnosisGA4Data(): Promise<DiagnosisGA4Data | null> {
   if (!propertyId || !credJson) return null;
 
   try {
-    const credentials = JSON.parse(credJson);
+    const credentials = safeParseCredentials(credJson);
 
     const auth = new GoogleAuth({
       credentials,
