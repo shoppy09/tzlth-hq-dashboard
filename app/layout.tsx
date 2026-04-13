@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { RefreshButton } from '@/components/RefreshButton';
 
 export const metadata: Metadata = {
   title: '職涯停看聽 總部',
@@ -51,12 +52,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   職涯停看聽 總部
                 </div>
               </div>
-              <div className="text-right">
-                <div className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>
-                  蒲朝棟 Tim
-                </div>
-                <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                  {dateStr}
+              <div className="flex items-center gap-2">
+                <RefreshButton />
+                <div className="text-right">
+                  <div className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    蒲朝棟 Tim
+                  </div>
+                  <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    {dateStr}
+                  </div>
                 </div>
               </div>
             </div>
