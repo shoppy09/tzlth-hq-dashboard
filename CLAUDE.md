@@ -29,13 +29,14 @@
 
 > 所有對話視窗共用檔案系統。**文件是各視窗之間唯一的共用記憶。**
 
-### 每次完成任何修改後，必須執行收尾四件事：
-1. **更新本文件「最近修改記錄」**（見下表）
-2. **更新總部任務清單**：`C:\Users\USER\Desktop\tzlth-hq\dev\tasks.md`
+### 每次完成任何修改後，必須執行收尾五件事（順序不可省略）：
+0. **npm run build → git push → npx vercel --prod**（三步缺一不可）
+1. **更新本文件「最近修改記錄」**（日期、修改內容、狀態 ✅）← **當場就寫，不等收尾**
+2. **更新總部任務清單**：`C:\Users\USER\Desktop\tzlth-hq\dev\tasks.md`（完成項目標 [x] + 完成日期）
 3. **更新每日日誌**：`C:\Users\USER\Desktop\tzlth-hq\reports\daily-log.md`
 4. **寫入反思日誌**：`C:\Users\USER\Desktop\tzlth-hq\reports\reflection-log.md`（有實質改善價值才寫）
 
-> 未完成收尾四件事 = 任務未完成。
+> 未完成收尾五件事 = 任務未完成。修改記錄空白 = 上次沒有收尾。未 push + deploy = 儀表板看不到。
 
 ### 最近修改記錄
 
