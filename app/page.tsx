@@ -674,16 +674,9 @@ export default async function Home() {
                           {file.content ? (
                             <span className="text-xs ml-auto" style={{ color: 'var(--text-secondary)' }}>點擊展開 ▾</span>
                           ) : (
-                            <a
-                              href={`https://tzlth-knowledge.vercel.app/${folder.key}/${file.name}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs ml-auto"
-                              style={{ color: 'var(--accent)', textDecoration: 'none' }}
-                              onClick={(e) => e.stopPropagation()}
-                            >
+                            <span className="text-xs ml-auto" style={{ color: 'var(--accent)' }}>
                               知識庫查看 ↗
-                            </a>
+                            </span>
                           )}
                         </summary>
                         {file.content ? (
