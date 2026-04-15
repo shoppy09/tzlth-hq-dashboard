@@ -623,7 +623,18 @@ export default async function Home() {
 
       {/* ── 知識庫 */}
       <section id="knowledge">
-        <SectionHeader icon="📚" title="知識庫" note={knowledgeFolders.length > 0 ? `${knowledgeFolders.reduce((s, f) => s + f.files.length, 0)} 份文件` : undefined} />
+        <div className="flex items-center justify-between mb-2">
+          <SectionHeader icon="📚" title="知識庫" note={knowledgeFolders.length > 0 ? `${knowledgeFolders.reduce((s, f) => s + f.files.length, 0)} 份文件` : undefined} />
+          <a
+            href="https://tzlth-knowledge.vercel.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs px-2.5 py-1 rounded-lg"
+            style={{ backgroundColor: 'var(--accent-bg)', color: 'var(--accent)', border: '1px solid var(--accent)', textDecoration: 'none', whiteSpace: 'nowrap' }}
+          >
+            知識庫網站 ↗
+          </a>
+        </div>
         {knowledgeFolders.length === 0 ? (
           <div className="rounded-xl px-4 py-3 text-sm" style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
             知識庫讀取中…
@@ -660,8 +671,19 @@ export default async function Home() {
                         >
                           <span className="text-xs">📄</span>
                           <span className="text-sm" style={{ color: 'var(--text-primary)' }}>{file.name}</span>
-                          {file.content && (
+                          {file.content ? (
                             <span className="text-xs ml-auto" style={{ color: 'var(--text-secondary)' }}>點擊展開 ▾</span>
+                          ) : (
+                            <a
+                              href={`https://tzlth-knowledge.vercel.app/${folder.key}/${file.name}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs ml-auto"
+                              style={{ color: 'var(--accent)', textDecoration: 'none' }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              知識庫查看 ↗
+                            </a>
                           )}
                         </summary>
                         {file.content ? (
@@ -682,8 +704,17 @@ export default async function Home() {
                             </pre>
                           </div>
                         ) : (
-                          <div className="px-4 py-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                            內容請至 GitHub 查看
+                          <div className="px-4 py-2.5 text-xs flex items-center justify-between" style={{ color: 'var(--text-secondary)' }}>
+                            <span>完整內容請至知識庫網站查看</span>
+                            <a
+                              href={`https://tzlth-knowledge.vercel.app/${folder.key}/${file.name}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs px-2 py-0.5 rounded"
+                              style={{ backgroundColor: 'var(--accent-bg)', color: 'var(--accent)', textDecoration: 'none' }}
+                            >
+                              開啟 ↗
+                            </a>
                           </div>
                         )}
                       </details>
