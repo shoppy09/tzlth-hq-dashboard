@@ -626,7 +626,7 @@ export default async function Home() {
         <div className="flex items-center justify-between mb-2">
           <SectionHeader icon="📚" title="知識庫" note={knowledgeFolders.length > 0 ? `${knowledgeFolders.reduce((s, f) => s + f.files.length, 0)} 份文件` : undefined} />
           <a
-            href="https://tzlth-knowledge.vercel.app"
+            href="https://tzlth-knowledge-base.vercel.app"
             target="_blank"
             rel="noopener noreferrer"
             className="text-xs px-2.5 py-1 rounded-lg"
@@ -700,7 +700,7 @@ export default async function Home() {
                           <div className="px-4 py-2.5 text-xs flex items-center justify-between" style={{ color: 'var(--text-secondary)' }}>
                             <span>完整內容請至知識庫網站查看</span>
                             <a
-                              href={`https://tzlth-knowledge.vercel.app/${folder.key}/${file.name}`}
+                              href={`https://tzlth-knowledge-base.vercel.app/${folder.key}/${file.name}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-xs px-2 py-0.5 rounded"
