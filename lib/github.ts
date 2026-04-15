@@ -96,7 +96,7 @@ export async function getKnowledgeBase(): Promise<KnowledgeFolder[]> {
     { key: 'methodology', label: '方法論',   icon: '🧠', fetchContent: true  },
     { key: 'operations',  label: '操作 SOP', icon: '⚙️', fetchContent: true  },
     { key: 'decisions',   label: '決策記錄', icon: '📋', fetchContent: false },
-    { key: 'reference',   label: '參考文件', icon: '📖', fetchContent: false },
+    { key: 'references',  label: '參考文件', icon: '📖', fetchContent: false },
   ];
   return Promise.all(defs.map(async d => {
     const items = await fetchDir(`knowledge/${d.key}`).catch(() => [] as GitHubDirItem[]);
