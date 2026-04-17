@@ -621,6 +621,35 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* ── 指令清單 */}
+      {(() => {
+        const cmdRef = knowledgeFolders
+          .find(f => f.key === 'operations')
+          ?.files.find(f => f.name === 'commands-reference');
+        if (!cmdRef?.content) return null;
+        return (
+          <section id="commands" style={{ marginBottom: '1.5rem' }}>
+            <SectionHeader icon="⚡" title="指令清單" note="SKILL 指令 14 個 ＋ CLI 斜線指令 8 個" />
+            <div
+              className="rounded-xl overflow-hidden"
+              style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
+            >
+              <pre
+                className="text-xs leading-relaxed whitespace-pre-wrap px-4 py-3"
+                style={{
+                  color: 'var(--text-primary)',
+                  fontFamily: '"Noto Sans TC", "PingFang TC", sans-serif',
+                  maxHeight: '520px',
+                  overflowY: 'auto',
+                }}
+              >
+                {cmdRef.content}
+              </pre>
+            </div>
+          </section>
+        );
+      })()}
+
       {/* ── 知識庫 */}
       <section id="knowledge">
         <div className="flex items-center justify-between mb-2">
