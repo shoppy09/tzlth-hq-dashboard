@@ -21,8 +21,10 @@
 | GOOGLE_API_KEY | Gemini 指令中心 | 2026-04-13 |
 | KIT_API_KEY | Kit 訂閱者數 | 2026-04-12 |
 | LINE_CHANNEL_ACCESS_TOKEN | LINE 粉絲數 | 2026-04-12 |
-| GOOGLE_ANALYTICS_PROPERTY_ID | GA4 數據（530451281）| 2026-04-12 |
-| GOOGLE_SERVICE_ACCOUNT_JSON | GA4 Service Account | 2026-04-12 |
+| GOOGLE_ANALYTICS_PROPERTY_ID | GA4 診斷系統 Property ID（532491434）| 2026-04-12 |
+| WEBSITE_GA4_PROPERTY_ID | GA4 官網 Property ID（530451281）| 2026-04-12 |
+| GOOGLE_SERVICE_ACCOUNT_JSON | GA4 Service Account（授權兩個 GA4 Property）| 2026-04-12 |
+| BOOKING_STATS_URL | 預約系統 /api/stats（預約 KPI 來源）| 2026-04-12 |
 
 ---
 ## ⚡ 跨視窗同步協議（最高優先規則）
@@ -47,6 +49,7 @@
 | 2026-04-13 | 新增指令中心（Gemini 2.0 Flash，6 預設指令）| 總部視窗 | ✅ |
 | 2026-04-13 | UI 全面優化（快速連結列、系統卡片 URL、並排雙欄）| 總部視窗 | ✅ |
 | 2026-04-12 | GA4 Service Account 整合完成（自動抓取診斷事件數據）| 總部視窗 | ✅ |
+| 2026-04-17 | 補齊環境變數清單：新增 WEBSITE_GA4_PROPERTY_ID + BOOKING_STATS_URL；修正 GOOGLE_ANALYTICS_PROPERTY_ID 值（530451281→532491434）| 總部視窗 | ✅ |
 | 2026-04-12 | 新增 KIT_API_KEY + LINE_CHANNEL_ACCESS_TOKEN | 總部視窗 | ✅ |
 
 ---
