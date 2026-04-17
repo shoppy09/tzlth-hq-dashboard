@@ -22,10 +22,11 @@ const navItems = [
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const now = new Date();
-  const month = now.getMonth() + 1;
-  const day   = now.getDate();
-  const dow   = WEEKDAYS[now.getDay()];
+  // Taiwan is UTC+8 (no DST) — Vercel runs on UTC, must offset manually
+  const now = new Date(Date.now() + 8 * 60 * 60 * 1000);
+  const month = now.getUTCMonth() + 1;
+  const day   = now.getUTCDate();
+  const dow   = WEEKDAYS[now.getUTCDay()];
   const dateStr = `${month}月${day}日・週${dow}`;
 
   return (
