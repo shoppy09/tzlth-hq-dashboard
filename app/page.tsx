@@ -322,7 +322,8 @@ export default async function Home() {
   const avgHealth   = systems.length
     ? (systems.reduce((s, sys) => s + sys.health_score, 0) / systems.length).toFixed(1) : '0';
   const alertSystems = systems.filter(s => s.health_score <= 3);
-  const quickLinks   = systems.filter(s => s.url && (s.status === 'live' || s.status === 'active') && s.id !== 'SYS-07');
+  const quickLinks   = systems.filter(s => s.url && (s.status === 'live' || s.status === 'active') && s.id !== 'SYS-07' && s.id !== 'SYS-05');
+  const quickLinkLabel: Record<string, string> = { 'SYS-02': 'Threads分析' };
 
   const threadsFollowers   = (systems.find(s => s.id === 'SYS-02') as any)?.current_followers ?? null;
   const followerSparkData  = (followerHistory as FollowerPoint[]).map(p => p.followers);
@@ -400,9 +401,24 @@ export default async function Home() {
                 }}
               >
                 <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: '#22c55e' }} />
-                {s.short_code} ↗
+                {quickLinkLabel[s.id] ?? s.short_code} ↗
               </a>
             ))}
+            <a
+              href="https://booking.careerssl.com/admin"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="link-pill text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1"
+              style={{
+                backgroundColor: 'var(--bg-card)',
+                border: '1px solid var(--border)',
+                color: 'var(--text-secondary)',
+                textDecoration: 'none',
+              }}
+            >
+              <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: '#22c55e' }} />
+              預約後台 ↗
+            </a>
           </div>
         )}
       </section>
