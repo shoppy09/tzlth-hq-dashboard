@@ -53,12 +53,34 @@ export function DailyChecklist({ md }: { md: string }) {
       const stored = localStorage.getItem(storageKey);
       if (stored) setChecked(JSON.parse(stored));
     } catch { /* ignore */ }
-  }, [storageKey]);
+    // Cross-device sync: fetch state from GitHub via API
+    fetch('/api/checklist-state')
+      .then(r => r.json())
+      .then((allState: Record<string, Record<string, boolean>>) => {
+        const todayState = allState[today];
+        if (todayState && Object.keys(todayState).length > 0) {
+          setChecked(todayState);
+          try { localStorage.setItem(storageKey, JSON.stringify(todayState)); } catch { /* ignore */ }
+        }
+      })
+      .catch(() => { /* ignore, fall back to localStorage */ });
+  }, [storageKey, today]);
 
   const toggle = (id: string) => {
     const next = { ...checked, [id]: !checked[id] };
     setChecked(next);
     try { localStorage.setItem(storageKey, JSON.stringify(next)); } catch { /* ignore */ }
+    // Cross-device sync: write state to GitHub via API (fire-and-forget)
+    fetch('/api/checklist-state')
+      .then(r => r.json())
+      .then((allState: Record<string, Record<string, boolean>>) =>
+        fetch('/api/checklist-state', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...allState, [today]: next }),
+        })
+      )
+      .catch(() => { /* ignore write failure */ });
   };
 
   if (items.length === 0) return null;

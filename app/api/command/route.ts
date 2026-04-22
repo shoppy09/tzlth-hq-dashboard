@@ -88,7 +88,10 @@ export async function POST(req: Request) {
           if (text) controller.enqueue(encoder.encode(text));
         }
       } catch (err) {
-        const msg = err instanceof Error ? err.message : '未知錯誤';
+        let msg = err instanceof Error ? err.message : '未知錯誤';
+        if (msg.includes('429') || msg.includes('Resource exhausted') || msg.includes('RESOURCE_EXHAUSTED')) {
+          msg = 'Gemini API 配額已用完（每日免費額度有上限），請等候至隔日 UTC 00:00（台灣時間 08:00）後重試';
+        }
         controller.enqueue(encoder.encode(`\n\n⚠️ 執行失敗：${msg}`));
       } finally {
         controller.close();
