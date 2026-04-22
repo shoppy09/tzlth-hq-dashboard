@@ -196,17 +196,25 @@ function KpiCard({ icon, title, rows, health, sparkData, accentColor }: {
           {sparkData && sparkData.length >= 2 && <Sparkline data={sparkData} />}
           {health != null && (
             <span
-              className="text-xs font-bold px-1.5 py-0.5 rounded"
-              style={{ color: healthColor(health), backgroundColor: healthColor(health) + '18', fontSize: '10px' }}
-            >
-              ♥ {health}/5
-            </span>
+              className="w-2.5 h-2.5 rounded-full inline-block flex-shrink-0"
+              style={{ backgroundColor: health >= 4 ? '#22c55e' : health >= 3 ? '#f97316' : '#ef4444' }}
+            />
           )}
         </div>
       </div>
       <div className="space-y-1.5">
         {rows.map(r => <StatRow key={r.label} label={r.label} value={r.value} unit={r.unit} note={r.note} />)}
       </div>
+    </div>
+  );
+}
+
+// ─── Section label ────────────────────────────────────────
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="text-xs font-bold mb-2 mt-1"
+      style={{ color: 'var(--text-secondary)', letterSpacing: '0.08em' }}>
+      {children}
     </div>
   );
 }
@@ -343,19 +351,12 @@ export default async function Home() {
 
       {/* ── 健康警示（有問題才顯示）*/}
       {alertSystems.length > 0 && (
-        <div className="rounded-xl px-4 py-3 space-y-1.5"
-          style={{ backgroundColor: '#ef444410', border: '1px solid #ef444430' }}>
-          <div className="text-xs font-bold mb-1" style={{ color: '#ef4444' }}>⚠ 系統健康警示</div>
-          {alertSystems.map(s => (
-            <div key={s.id} className="flex items-start justify-between gap-2">
-              <span className="text-xs font-semibold shrink-0" style={{ color: '#ef4444' }}>
-                {s.short_code} — {s.health_score}/5
-              </span>
-              <span className="text-xs text-right" style={{ color: 'var(--text-secondary)' }}>
-                {s.pending_tasks?.[0] ?? ''}
-              </span>
-            </div>
-          ))}
+        <div className="rounded-xl px-4 py-2.5 flex items-center gap-2"
+          style={{ backgroundColor: '#ef444415', border: '1px solid #ef444460', borderLeft: '3px solid #ef4444' }}>
+          <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: '#ef4444' }} />
+          <span className="text-xs font-semibold" style={{ color: '#ef4444' }}>
+            需關注：{alertSystems.map(s => s.short_code).join('、')}
+          </span>
         </div>
       )}
 
@@ -426,7 +427,10 @@ export default async function Home() {
       {/* ── KPI 總覽 */}
       <section id="kpi">
         <SectionHeader icon="📊" title="KPI 總覽" />
-        <div className="grid grid-cols-2 gap-3">
+
+        {/* OPERATION */}
+        <SectionLabel>OPERATION</SectionLabel>
+        <div className="grid grid-cols-2 gap-3 mb-4">
 
           <KpiCard icon="🌐" title="官網" accentColor="#4f8ef7"
             health={systems.find(s => s.id === 'SYS-01')?.health_score}
@@ -436,18 +440,6 @@ export default async function Home() {
               { label: '頁面瀏覽', value: websiteGA4.pageViews.toLocaleString(),  unit: '次' },
             ] : [
               { label: 'UV/Sessions', value: '—', note: '設定 GA4 啟用' },
-            ]}
-          />
-
-          <KpiCard icon="📊" title="看板" accentColor="#22c55e"
-            health={systems.find(s => s.id === 'SYS-02')?.health_score}
-            sparkData={followerSparkData.length >= 2 ? followerSparkData : undefined}
-            rows={[
-              { label: 'Threads 追蹤', value: threadsFollowers ? threadsFollowers.toLocaleString() : '—', unit: '人' },
-              { label: '趨勢', value: followerSparkData.length >= 2
-                  ? (followerSparkData[followerSparkData.length - 1] - followerSparkData[0] >= 0 ? '↑' : '↓') +
-                    ' ' + Math.abs(followerSparkData[followerSparkData.length - 1] - followerSparkData[0])
-                  : '—' },
             ]}
           />
 
@@ -476,16 +468,6 @@ export default async function Home() {
             ]}
           />
 
-          <KpiCard icon="💬" title="社群平台" accentColor="#06b6d4"
-            health={systems.find(s => s.id === 'SYS-05')?.health_score}
-            rows={[
-              { label: 'LINE 好友',  value: lineFollowers != null ? lineFollowers.toLocaleString() : ((socialMetrics?.line?.friends ?? (inventory as any)?.line_followers)?.toLocaleString() ?? '—'), unit: '人', note: lineFollowers != null ? '自動' : '手動' },
-              { label: '方格子',     value: socialMetrics?.vocus?.followers    != null ? socialMetrics.vocus.followers.toLocaleString()    : '—', unit: '人', note: '手動' },
-              { label: 'Facebook',  value: socialMetrics?.facebook?.followers  != null ? socialMetrics.facebook.followers.toLocaleString()  : '—', unit: '人' },
-              { label: 'Instagram', value: socialMetrics?.instagram?.followers != null ? socialMetrics.instagram.followers.toLocaleString() : '—', unit: '人' },
-            ]}
-          />
-
           {/* 外展 — also anchors #outreach */}
           <div id="outreach">
             <KpiCard icon="📤" title="外展" accentColor="#eab308"
@@ -502,29 +484,48 @@ export default async function Home() {
 
         </div>
 
-        {/* 財務摘要 — also anchors #finance */}
-        <div id="finance" className="mt-3">
-          {financeSummary ? (
-            <div
-              className="rounded-xl px-4 py-3 flex items-center justify-between"
-              style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', borderTop: '2px solid #22c55e' }}
-            >
-              <span className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>💰 本月財務</span>
-              <div className="flex items-center gap-4">
-                <span className="text-xs">收入 <span className="font-bold" style={{ color: '#22c55e' }}>NT${financeSummary.income}</span></span>
-                <span className="text-xs">支出 <span className="font-bold" style={{ color: '#ef4444' }}>NT${financeSummary.expense}</span></span>
-                <span className="text-xs">淨利 <span className="font-bold" style={{ color: 'var(--accent)' }}>{financeSummary.profit}</span></span>
-              </div>
-            </div>
-          ) : (
-            <div
-              className="rounded-xl px-4 py-3 text-xs"
-              style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
-            >
-              💰 財務數據未填入 — 請更新 finance/monthly-report.md
-            </div>
-          )}
+        {/* SOCIAL */}
+        <SectionLabel>SOCIAL</SectionLabel>
+        <div className="grid grid-cols-2 gap-3 mb-4">
+
+          <KpiCard icon="📊" title="看板" accentColor="#22c55e"
+            health={systems.find(s => s.id === 'SYS-02')?.health_score}
+            sparkData={followerSparkData.length >= 2 ? followerSparkData : undefined}
+            rows={[
+              { label: 'Threads 追蹤', value: threadsFollowers ? threadsFollowers.toLocaleString() : '—', unit: '人' },
+              { label: '趨勢', value: followerSparkData.length >= 2
+                  ? (followerSparkData[followerSparkData.length - 1] - followerSparkData[0] >= 0 ? '↑' : '↓') +
+                    ' ' + Math.abs(followerSparkData[followerSparkData.length - 1] - followerSparkData[0])
+                  : '—' },
+            ]}
+          />
+
+          <KpiCard icon="💬" title="社群平台" accentColor="#06b6d4"
+            health={systems.find(s => s.id === 'SYS-05')?.health_score}
+            rows={[
+              { label: 'LINE 好友',  value: lineFollowers != null ? lineFollowers.toLocaleString() : ((socialMetrics?.line?.friends ?? (inventory as any)?.line_followers)?.toLocaleString() ?? '—'), unit: '人', note: lineFollowers != null ? '自動' : '手動' },
+              { label: '方格子',     value: socialMetrics?.vocus?.followers    != null ? socialMetrics.vocus.followers.toLocaleString()    : '—', unit: '人', note: '手動' },
+              { label: 'Facebook',  value: socialMetrics?.facebook?.followers  != null ? socialMetrics.facebook.followers.toLocaleString()  : '—', unit: '人' },
+              { label: 'Instagram', value: socialMetrics?.instagram?.followers != null ? socialMetrics.instagram.followers.toLocaleString() : '—', unit: '人' },
+            ]}
+          />
+
         </div>
+
+        {/* FINANCE — also anchors #finance */}
+        <div id="finance">
+          <SectionLabel>FINANCE</SectionLabel>
+          <KpiCard icon="💰" title="本月財務" accentColor="#22c55e"
+            rows={financeSummary ? [
+              { label: '月收入', value: `NT$${financeSummary.income}`, note: '手動' },
+              { label: '月支出', value: `NT$${financeSummary.expense}` },
+              { label: '月淨利', value: financeSummary.profit },
+            ] : [
+              { label: '月收入', value: '—', note: '更新 finance/monthly-report.md' },
+            ]}
+          />
+        </div>
+
       </section>
 
       {/* ── 指令中心 */}
