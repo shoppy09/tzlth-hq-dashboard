@@ -4,6 +4,7 @@ import { parseTasks } from '@/lib/parse-tasks';
 import { SystemCard } from '@/components/SystemCard';
 import { CommandCenter } from '@/components/CommandCenter';
 import { DailyChecklist } from '@/components/DailyChecklist';
+import { TaskTabView } from '@/components/TaskTabView';
 import { System } from '@/lib/types';
 
 // ─── Types ────────────────────────────────────────────────
@@ -533,62 +534,9 @@ export default async function Home() {
         <CommandCenter />
       </section>
 
-      {/* ── P1 任務 */}
+      {/* ── 任務追蹤（Tab 視圖）*/}
       <section id="tasks">
-        <SectionHeader icon="⚡" title="本週必須完成" />
-        {p1Tasks.length > 0 ? (
-          <div className="space-y-2">
-            {p1Tasks.map((t, i) => (
-              <div
-                key={i}
-                className="rounded-xl px-4 py-3 flex items-start gap-3"
-                style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
-              >
-                <span
-                  className="text-xs font-bold px-2 py-0.5 rounded mt-0.5 shrink-0"
-                  style={{ backgroundColor: priorityColor(t.priority) + '20', color: priorityColor(t.priority) }}
-                >
-                  {t.priority}
-                </span>
-                <div>
-                  <div className="text-xs font-semibold mb-0.5" style={{ color: 'var(--accent)' }}>{t.system}</div>
-                  <div className="text-sm leading-relaxed" style={{ color: 'var(--text-primary)' }}>{t.content}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div
-            className="rounded-xl px-4 py-3 text-sm"
-            style={{ backgroundColor: 'var(--bg-card)', border: '1px solid #22c55e30', color: '#22c55e' }}
-          >
-            ✓ 本週無緊急任務
-          </div>
-        )}
-
-        {p2Tasks.length > 0 && (
-          <div className="mt-4">
-            <SectionHeader icon="📌" title="本週推進" />
-            <div className="space-y-2">
-              {p2Tasks.map((t, i) => (
-                <div
-                  key={i}
-                  className="rounded-xl px-4 py-3 flex items-start gap-3"
-                  style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
-                >
-                  <span
-                    className="text-xs font-bold px-2 py-0.5 rounded mt-0.5 shrink-0"
-                    style={{ backgroundColor: '#eab30820', color: '#eab308' }}
-                  >P2</span>
-                  <div>
-                    <div className="text-xs font-semibold mb-0.5" style={{ color: 'var(--text-secondary)' }}>{t.system}</div>
-                    <div className="text-sm leading-relaxed" style={{ color: 'var(--text-primary)' }}>{t.content}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <TaskTabView p1Tasks={p1Tasks} p2Tasks={p2Tasks} />
       </section>
 
       {/* ── 近期內容排程 */}
