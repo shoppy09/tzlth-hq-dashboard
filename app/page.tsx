@@ -1,16 +1,32 @@
-import { getInventory, getTasksMd, getContentCalendar, getOutreachLog, getFinanceReport, getGA4Log, getFollowerHistory, getSocialMetrics, getDailyChecklist, getKnowledgeBase, KnowledgeFolder } from '@/lib/github';
+import { getInventory, getTasksMd, getContentCalendar, getOutreachLog, getFinanceReport, getGA4Log, getFollowerHistory, getSocialMetrics, getDailyChecklist, getKnowledgeBase, getDailyRevenue, KnowledgeFolder } from '@/lib/github';
 import { getDiagnosisGA4Data, getWebsiteGA4Data } from '@/lib/ga4';
 import { parseTasks } from '@/lib/parse-tasks';
 import { SystemCard } from '@/components/SystemCard';
 import { CommandCenter } from '@/components/CommandCenter';
 import { DailyChecklist } from '@/components/DailyChecklist';
 import { TaskTabView } from '@/components/TaskTabView';
+import { FinancePanel } from '@/components/FinancePanel';
 import { System } from '@/lib/types';
 
 // ─── Types ────────────────────────────────────────────────
 interface ContentItem  { date: string; type: string; topic: string; status: string; }
 interface OutreachStats { sent: number; replied: number; negotiating: number; }
 interface FinanceSummary { income: string; expense: string; profit: string; }
+interface UnpaidItem { client: string; service: string; amount: number; dueDate: string; status: string; overdue: boolean; }
+interface UnpaidSummary { count: number; totalAmount: number; overdueCount: number; items: UnpaidItem[]; }
+interface DailyRecord {
+  date: string;
+  booking_by_date: { count: number; revenue: number; order_ids: string[] };
+  payment_by_date: { count: number; revenue: number; order_ids: string[] };
+  created_by_date: { count_total: number; count_confirmed: number; count_cancelled: number };
+  tenant: string;
+  synced_at: string;
+}
+interface ViewTotals {
+  booking: { count: number; revenue: number };
+  payment: { count: number; revenue: number };
+  created: { count: number; confirmed: number };
+}
 interface GA4WeekRow { week: string; diagnoseStart: string; diagnoseComplete: string; completeRate: string; upsellClick: string; convRate: string; }
 interface FollowerPoint { date: string; followers: number; }
 interface BookingStats { total: number; thisWeek: number; thisMonth: number; }
@@ -72,6 +88,77 @@ function parseFinanceReport(md: string): FinanceSummary {
     income:  md.match(/本月收入合計：NT\$([^\s\n\*]+)/)?.[1]           ?? '—',
     expense: md.match(/本月支出合計：NT\$([^\s\n\*]+)/)?.[1]           ?? '—',
     profit:  md.match(/\*\*本月淨利\*\*\s*\|\s*\*\*([^*\n]+)\*\*/)?.[1] ?? '—',
+  };
+}
+
+// RCF-009 Phase 4：解析 finance/monthly-report.md 未收款追蹤表
+function parseDueDate(s: string): Date | null {
+  if (!s) return null;
+  const t = s.trim();
+  let m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  m = t.match(/^(\d{1,2})\/(\d{1,2})$/);
+  if (m) {
+    const now = new Date();
+    const d = new Date(now.getFullYear(), Number(m[1]) - 1, Number(m[2]));
+    if (now.getTime() - d.getTime() > 180 * 24 * 60 * 60 * 1000) d.setFullYear(d.getFullYear() + 1);
+    return d;
+  }
+  return null;
+}
+
+function parseUnpaidTracking(md: string): UnpaidSummary {
+  const items: UnpaidItem[] = [];
+  const lines = md.split('\n');
+  let inSection = false;
+  let inTable = false;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  for (const line of lines) {
+    if (line.includes('未收款追蹤')) { inSection = true; continue; }
+    if (inSection && line.includes('| 客戶代號')) { inTable = true; continue; }
+    if (inTable && line.startsWith('|---')) continue;
+    if (inTable && line.startsWith('|')) {
+      const cols = line.split('|').map(s => s.trim());
+      // cols[0] 空, cols[1]=客戶代號, ..., cols[6]=狀態, cols[7] 空
+      const client = cols[1] ?? '';
+      const service = cols[2] ?? '';
+      const amountStr = cols[3] ?? '';
+      const dueStr = cols[5] ?? '';
+      const status = cols[6] ?? '';
+      if (!client || client === '-' || client.includes('---')) continue;
+      const amount = Number(amountStr.replace(/,/g, '')) || 0;
+      const due = parseDueDate(dueStr);
+      const overdue = due ? (today > due && status !== '已收款') : false;
+      items.push({ client, service, amount, dueDate: dueStr, status, overdue });
+    } else if (inTable && !line.startsWith('|')) {
+      inTable = false;
+      inSection = false;
+    }
+  }
+  return {
+    count: items.length,
+    totalAmount: items.reduce((s, i) => s + i.amount, 0),
+    overdueCount: items.filter(i => i.overdue).length,
+    items,
+  };
+}
+
+// RCF-009 Phase 4：匯總本月 daily-revenue.json 三視角
+function computeViewTotals(records: DailyRecord[]): ViewTotals {
+  const sum = (fn: (r: DailyRecord) => number) => records.reduce((s, r) => s + fn(r), 0);
+  return {
+    booking: {
+      count: sum(r => r.booking_by_date?.count || 0),
+      revenue: sum(r => r.booking_by_date?.revenue || 0),
+    },
+    payment: {
+      count: sum(r => r.payment_by_date?.count || 0),
+      revenue: sum(r => r.payment_by_date?.revenue || 0),
+    },
+    created: {
+      count: sum(r => r.created_by_date?.count_total || 0),
+      confirmed: sum(r => r.created_by_date?.count_confirmed || 0),
+    },
   };
 }
 
@@ -295,12 +382,14 @@ export default async function Home() {
     return r.json() as Promise<BookingStats>;
   };
 
+  const currentYm = new Date().toISOString().slice(0, 7);
   const [
     calMd, outreachMd, financeMd, ga4Md,
     ga4Live, websiteGA4,
     followerHistRaw, socialMetricsRaw,
     lineFollowers, , bookingStats,
     knowledgeResult,
+    dailyRevenueRaw,
   ] = await Promise.all([
     safe(getContentCalendar()),
     safe(getOutreachLog()),
@@ -314,6 +403,7 @@ export default async function Home() {
     safe(fetchKit()),
     safe(fetchBooking()),
     safe(getKnowledgeBase()),
+    safe(getDailyRevenue(currentYm)),
   ]);
   if (knowledgeResult) knowledgeFolders = knowledgeResult;
 
@@ -321,6 +411,21 @@ export default async function Home() {
   outreachStats  = outreachMd ? parseOutreachLog(outreachMd)  : null;
   financeSummary = financeMd  ? parseFinanceReport(financeMd) : null;
   ga4Row         = ga4Md      ? parseGA4Log(ga4Md)            : null;
+
+  // RCF-009 Phase 4:未收款 + 自動對賬資料
+  const unpaidSummary: UnpaidSummary | null = financeMd ? parseUnpaidTracking(financeMd) : null;
+  let viewTotals: ViewTotals | null = null;
+  let syncedAt: string | null = null;
+  try {
+    if (dailyRevenueRaw) {
+      const data = JSON.parse(dailyRevenueRaw) as { records?: DailyRecord[] };
+      const records = data.records || [];
+      viewTotals = computeViewTotals(records);
+      if (records.length > 0) syncedAt = records[records.length - 1].synced_at;
+    }
+  } catch { /* ignore */ }
+  // 累計淨利需要 ≥2 月歷史資料才有意義（本階段僅 1 個月,標記 false）
+  const cumulativeProfitAvailable = false;
   try { if (followerHistRaw) followerHistory = JSON.parse(followerHistRaw) as FollowerPoint[]; } catch { /* ignore */ }
   let socialMetrics: SocialMetrics | null = null;
   try { if (socialMetricsRaw) socialMetrics = JSON.parse(socialMetricsRaw) as SocialMetrics; } catch { /* ignore */ }
@@ -513,17 +618,15 @@ export default async function Home() {
 
         </div>
 
-        {/* FINANCE — also anchors #finance */}
+        {/* FINANCE — also anchors #finance (RCF-009 Phase 4 FinancePanel) */}
         <div id="finance">
           <SectionLabel>FINANCE</SectionLabel>
-          <KpiCard icon="💰" title="本月財務" accentColor="#22c55e"
-            rows={financeSummary ? [
-              { label: '月收入', value: `NT$${financeSummary.income}`, note: '手動' },
-              { label: '月支出', value: `NT$${financeSummary.expense}` },
-              { label: '月淨利', value: financeSummary.profit },
-            ] : [
-              { label: '月收入', value: '—', note: '更新 finance/monthly-report.md' },
-            ]}
+          <FinancePanel
+            financeSummary={financeSummary}
+            unpaidSummary={unpaidSummary}
+            viewTotals={viewTotals}
+            syncedAt={syncedAt}
+            cumulativeProfitAvailable={cumulativeProfitAvailable}
           />
         </div>
 

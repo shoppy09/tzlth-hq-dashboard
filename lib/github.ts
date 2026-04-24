@@ -38,6 +38,27 @@ export async function getFinanceReport() {
   return fetchFile('finance/monthly-report.md');
 }
 
+// RCF-009 Phase 4：每日收入 JSON（依月份分檔）
+export async function getDailyRevenue(ym: string): Promise<string | null> {
+  try {
+    return await fetchFile(`finance/${ym}-daily.json`);
+  } catch {
+    return null;
+  }
+}
+
+// 近 N 個月的 daily-revenue（趨勢圖預留 API，本次不做 UI）
+export async function getRecentDailyRevenues(nMonths = 6): Promise<Array<{ ym: string; raw: string | null }>> {
+  const now = new Date();
+  const months: string[] = [];
+  for (let i = 0; i < nMonths; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  }
+  const results = await Promise.all(months.map(async ym => ({ ym, raw: await getDailyRevenue(ym) })));
+  return results;
+}
+
 export async function getGA4Log() {
   return fetchFile('product/ga4-weekly-log.md');
 }
