@@ -425,6 +425,24 @@ export default async function Home() {
   };
 
   const currentYm = new Date().toISOString().slice(0, 7);
+
+  // FinancePanel Task 1：從 finance.careerssl.com/api/summary 取得即時財務數字
+  const fetchFinanceSummaryFromApi = async (): Promise<FinanceSummary | null> => {
+    try {
+      const r = await fetch(
+        `https://finance.careerssl.com/api/summary?month=${currentYm}`,
+        { next: { revalidate: 300 } } as unknown as RequestInit
+      );
+      if (!r.ok) return null;
+      const data = await r.json() as { income_total: number; expense_total: number; net: number };
+      return {
+        income:  String(data.income_total),
+        expense: String(data.expense_total),
+        profit:  String(data.net),
+      };
+    } catch { return null; }
+  };
+
   const [
     calMd, outreachMd, financeMd, ga4Md,
     ga4Live, websiteGA4,
@@ -433,6 +451,7 @@ export default async function Home() {
     knowledgeResult,
     dailyRevenueRaw,
     externalRevenueRaw,
+    apiFinanceSummary,
   ] = await Promise.all([
     safe(getContentCalendar()),
     safe(getOutreachLog()),
@@ -448,12 +467,14 @@ export default async function Home() {
     safe(getKnowledgeBase()),
     safe(getDailyRevenue(currentYm)),
     safe(getExternalRevenue()),
+    safe(fetchFinanceSummaryFromApi()),
   ]);
   if (knowledgeResult) knowledgeFolders = knowledgeResult;
 
   contentItems   = calMd      ? parseContentCalendar(calMd)   : [];
   outreachStats  = outreachMd ? parseOutreachLog(outreachMd)  : null;
-  financeSummary = financeMd  ? parseFinanceReport(financeMd) : null;
+  // API 優先（即時 ledger 數字），fallback 到 monthly-report.md 解析
+  financeSummary = apiFinanceSummary ?? (financeMd ? parseFinanceReport(financeMd) : null);
   ga4Row         = ga4Md      ? parseGA4Log(ga4Md)            : null;
 
   // RCF-009 Phase 4:未收款 + 自動對賬資料
