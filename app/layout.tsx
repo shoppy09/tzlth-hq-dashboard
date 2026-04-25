@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { RefreshButton } from '@/components/RefreshButton';
+import { SidebarNav } from '@/components/SidebarNav';
 
 export const metadata: Metadata = {
   title: '職涯停看聽 總部',
@@ -39,7 +40,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}
         >
           {/* 最大寬度對齊 sidebar + 內容的外框 */}
-          <div className="max-w-[920px] mx-auto px-4">
+          <div className="max-w-[1100px] mx-auto px-4">
 
             {/* 標題列 */}
             <div className="pt-3 pb-2 flex items-center justify-between">
@@ -93,13 +94,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </header>
 
         {/* ── 頁面主體：sidebar + content ──────────────── */}
-        <div className="max-w-[920px] mx-auto flex items-start">
+        <div className="max-w-[1100px] mx-auto flex items-start">
 
           {/* 左側導覽（桌機專用，lg 以上顯示）*/}
           <aside
             className="hidden lg:flex flex-col shrink-0 py-5 pl-4 pr-3"
             style={{
-              width: '152px',
+              width: '164px',
               position: 'sticky',
               /* 頂部對齊 header 高度（約 88px：標題列 54px + nav列 34px）*/
               top: '88px',
@@ -115,23 +116,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               導覽
             </div>
 
-            <nav className="flex flex-col gap-0.5">
-              {navItems.map((item) => (
-                <a
-                  key={item.href}
-                  href={item.href}
-                  className="text-xs font-semibold px-2.5 py-2 rounded-lg transition-colors link-pill"
-                  style={{
-                    color: item.highlight ? 'var(--accent)' : 'var(--text-secondary)',
-                    textDecoration: 'none',
-                    backgroundColor: 'transparent',
-                    border: item.highlight ? `1px solid var(--accent)` : '1px solid transparent',
-                  }}
-                >
-                  {item.highlight ? `⚡ ${item.label}` : item.label}
-                </a>
-              ))}
-            </nav>
+            <SidebarNav navItems={navItems} />
 
             {/* 底部版本標記 */}
             <div className="mt-auto pt-4 text-[10px]" style={{ color: 'var(--text-muted)' }}>

@@ -270,30 +270,70 @@ function KpiCard({ icon, title, rows, health, sparkData, accentColor }: {
   accentColor?: string;
 }) {
   const accent = accentColor ?? 'var(--border-bright)';
+  const healthColor = health == null ? null
+    : health >= 4 ? '#22c55e'
+    : health >= 3 ? '#f97316'
+    : '#ef4444';
+  const hasData = rows.some(r => r.value !== '—');
   return (
     <div
-      className="rounded-xl px-3 py-3"
+      className="rounded-xl px-3 pt-3 pb-3"
       style={{
         backgroundColor: 'var(--bg-card)',
         border: '1px solid var(--border)',
         borderTop: `2px solid ${accent}`,
       }}
     >
-      <div className="flex items-center justify-between mb-2.5">
+      {/* 標題列：icon + title 左，sparkline + 健康分 右 */}
+      <div className="flex items-center justify-between mb-1.5">
         <span className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{icon} {title}</span>
         <div className="flex items-center gap-2">
-          {sparkData && sparkData.length >= 2 && <Sparkline data={sparkData} />}
+          {sparkData && sparkData.length >= 2 && <Sparkline data={sparkData} color={accent} />}
           {health != null && (
             <span
-              className="w-2.5 h-2.5 rounded-full inline-block flex-shrink-0"
-              style={{ backgroundColor: health >= 4 ? '#22c55e' : health >= 3 ? '#f97316' : '#ef4444' }}
-            />
+              className="text-xs font-bold tabular-nums px-1.5 py-0.5 rounded"
+              style={{
+                color: healthColor ?? 'var(--text-secondary)',
+                backgroundColor: healthColor ? `${healthColor}18` : 'transparent',
+                fontSize: '10px',
+              }}
+            >
+              {health}/5
+            </span>
           )}
         </div>
       </div>
-      <div className="space-y-1.5">
-        {rows.map(r => <StatRow key={r.label} label={r.label} value={r.value} unit={r.unit} note={r.note} />)}
-      </div>
+
+      {/* 健康分進度條 */}
+      {health != null && (
+        <div style={{ height: '2px', backgroundColor: 'var(--border)', borderRadius: '1px', marginBottom: '10px' }}>
+          <div style={{
+            height: '100%',
+            width: `${(health / 5) * 100}%`,
+            backgroundColor: healthColor ?? 'var(--border-bright)',
+            borderRadius: '1px',
+            transition: 'width 0.4s ease',
+          }} />
+        </div>
+      )}
+
+      {/* 資料列 or 空狀態 */}
+      {hasData ? (
+        <div className="space-y-1.5">
+          {rows.map(r => <StatRow key={r.label} label={r.label} value={r.value} unit={r.unit} note={r.note} />)}
+        </div>
+      ) : (
+        <div className="space-y-1.5">
+          {rows.map(r => (
+            <div key={r.label} className="flex items-center justify-between">
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{r.label}</span>
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                {r.note ? `尚無資料（${r.note}）` : '尚無資料'}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
