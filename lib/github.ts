@@ -88,6 +88,12 @@ export async function getDailyLog() {
   return fetchFile('reports/daily-log.md');
 }
 
+// ─── Finance external revenue ─────────────────────────
+export async function getExternalRevenue(): Promise<string> {
+  // revalidate: 0 = always fresh（用戶可能剛剛新增了一筆）
+  return fetchFile('finance/external-revenue.json', REPO, 0);
+}
+
 // ─── Checklist State (cross-device sync) ─────────────────
 
 const CHECKLIST_STATE_PATH = 'dev/daily-checklist-state.json';

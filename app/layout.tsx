@@ -38,7 +38,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           className="sticky top-0 z-40 border-b"
           style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}
         >
-          <div className="max-w-2xl mx-auto px-4">
+          {/* 最大寬度對齊 sidebar + 內容的外框 */}
+          <div className="max-w-[920px] mx-auto px-4">
 
             {/* 標題列 */}
             <div className="pt-3 pb-2 flex items-center justify-between">
@@ -66,9 +67,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
             </div>
 
-            {/* 導航列 */}
+            {/* 導航列：手機版（lg 以下）保留橫向 pill，桌機版靠 sidebar 導覽 */}
             <div
-              className="pb-3 flex gap-1.5 overflow-x-auto"
+              className="pb-3 flex gap-1.5 overflow-x-auto lg:hidden"
               style={{ scrollbarWidth: 'none' } as React.CSSProperties}
             >
               {navItems.map((item) => (
@@ -87,10 +88,63 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </a>
               ))}
             </div>
+
           </div>
         </header>
 
-        <main className="max-w-2xl mx-auto px-4 py-6">{children}</main>
+        {/* ── 頁面主體：sidebar + content ──────────────── */}
+        <div className="max-w-[920px] mx-auto flex items-start">
+
+          {/* 左側導覽（桌機專用，lg 以上顯示）*/}
+          <aside
+            className="hidden lg:flex flex-col shrink-0 py-5 pl-4 pr-3"
+            style={{
+              width: '152px',
+              position: 'sticky',
+              /* 頂部對齊 header 高度（約 88px：標題列 54px + nav列 34px）*/
+              top: '88px',
+              height: 'calc(100vh - 88px)',
+              overflowY: 'auto',
+              borderRight: '1px solid var(--border)',
+            }}
+          >
+            <div
+              className="text-[10px] font-bold uppercase mb-3"
+              style={{ color: 'var(--text-secondary)', letterSpacing: '0.12em' }}
+            >
+              導覽
+            </div>
+
+            <nav className="flex flex-col gap-0.5">
+              {navItems.map((item) => (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  className="text-xs font-semibold px-2.5 py-2 rounded-lg transition-colors link-pill"
+                  style={{
+                    color: item.highlight ? 'var(--accent)' : 'var(--text-secondary)',
+                    textDecoration: 'none',
+                    backgroundColor: 'transparent',
+                    border: item.highlight ? `1px solid var(--accent)` : '1px solid transparent',
+                  }}
+                >
+                  {item.highlight ? `⚡ ${item.label}` : item.label}
+                </a>
+              ))}
+            </nav>
+
+            {/* 底部版本標記 */}
+            <div className="mt-auto pt-4 text-[10px]" style={{ color: 'var(--text-muted)' }}>
+              TZLTH-HQ<br />v2025
+            </div>
+          </aside>
+
+          {/* 主要內容區 */}
+          <main className="flex-1 min-w-0 px-4 py-6">
+            {children}
+          </main>
+
+        </div>
       </body>
     </html>
   );

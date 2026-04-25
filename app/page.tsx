@@ -1,4 +1,5 @@
-import { getInventory, getTasksMd, getContentCalendar, getOutreachLog, getFinanceReport, getGA4Log, getFollowerHistory, getSocialMetrics, getDailyChecklist, getKnowledgeBase, getDailyRevenue, KnowledgeFolder } from '@/lib/github';
+import { getInventory, getTasksMd, getContentCalendar, getOutreachLog, getFinanceReport, getGA4Log, getFollowerHistory, getSocialMetrics, getDailyChecklist, getKnowledgeBase, getDailyRevenue, getExternalRevenue, KnowledgeFolder } from '@/lib/github';
+import type { FinanceEntry, FinanceData } from '@/lib/finance';
 import { getDiagnosisGA4Data, getWebsiteGA4Data } from '@/lib/ga4';
 import { parseTasks } from '@/lib/parse-tasks';
 import { SystemCard } from '@/components/SystemCard';
@@ -335,6 +336,7 @@ export default async function Home() {
   let ga4Row: GA4WeekRow             | null = null;
   let followerHistory: FollowerPoint[]      = [];
   let knowledgeFolders: KnowledgeFolder[]   = [];
+  let externalRevenueEntries: FinanceEntry[] = [];
 
   // ── Core (required) ──────────────────────────────────
   try {
@@ -390,6 +392,7 @@ export default async function Home() {
     lineFollowers, , bookingStats,
     knowledgeResult,
     dailyRevenueRaw,
+    externalRevenueRaw,
   ] = await Promise.all([
     safe(getContentCalendar()),
     safe(getOutreachLog()),
@@ -404,6 +407,7 @@ export default async function Home() {
     safe(fetchBooking()),
     safe(getKnowledgeBase()),
     safe(getDailyRevenue(currentYm)),
+    safe(getExternalRevenue()),
   ]);
   if (knowledgeResult) knowledgeFolders = knowledgeResult;
 
@@ -426,6 +430,13 @@ export default async function Home() {
   } catch { /* ignore */ }
   // 累計淨利需要 ≥2 月歷史資料才有意義（本階段僅 1 個月,標記 false）
   const cumulativeProfitAvailable = false;
+  // external-revenue.json → 手動財務記錄（初始狀態由 SSR 載入，新增後由 Client state 更新）
+  try {
+    if (externalRevenueRaw) {
+      const extData = JSON.parse(externalRevenueRaw) as FinanceData;
+      externalRevenueEntries = extData.records ?? [];
+    }
+  } catch { /* ignore */ }
   try { if (followerHistRaw) followerHistory = JSON.parse(followerHistRaw) as FollowerPoint[]; } catch { /* ignore */ }
   let socialMetrics: SocialMetrics | null = null;
   try { if (socialMetricsRaw) socialMetrics = JSON.parse(socialMetricsRaw) as SocialMetrics; } catch { /* ignore */ }
@@ -627,6 +638,7 @@ export default async function Home() {
             viewTotals={viewTotals}
             syncedAt={syncedAt}
             cumulativeProfitAvailable={cumulativeProfitAvailable}
+            initialEntries={externalRevenueEntries}
           />
         </div>
 
