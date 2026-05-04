@@ -693,6 +693,29 @@ export default async function Home() {
         {/* FINANCE — also anchors #finance (RCF-009 Phase 4 FinancePanel) */}
         <div id="finance">
           <SectionLabel>FINANCE</SectionLabel>
+          {/* ── 月報提醒（每月 25 日起顯示）*/}
+          {(() => {
+            const day = new Date().getDate();
+            const month = new Date().getMonth() + 1;
+            if (day < 25) return null;
+            const isExact = day === 25;
+            return (
+              <div className="rounded-xl px-4 py-2.5 flex items-center gap-2 mb-3"
+                style={{
+                  backgroundColor: isExact ? '#f9731615' : '#eab30815',
+                  border: `1px solid ${isExact ? '#f97316' : '#eab308'}60`,
+                  borderLeft: `3px solid ${isExact ? '#f97316' : '#eab308'}`,
+                }}>
+                <span>📋</span>
+                <span className="text-xs font-semibold"
+                  style={{ color: isExact ? '#f97316' : '#a16207' }}>
+                  {isExact
+                    ? `月報提醒（今日 ${month}/25）：請填寫本月收入至 finance/monthly-report.md`
+                    : `月報提醒（每月 25 日）：請確認本月收入已填寫`}
+                </span>
+              </div>
+            );
+          })()}
           <FinancePanel
             financeSummary={financeSummary}
             unpaidSummary={unpaidSummary}
