@@ -738,6 +738,31 @@ export default async function Home() {
         <TaskTabView p1Tasks={p1Tasks} p2Tasks={p2Tasks} />
       </section>
 
+      {/* ── 例行任務提醒 */}
+      <section id="routine">
+        <SectionHeader icon="📋" title="例行任務" note="固定週期，不列入 P1/P2 任務追蹤" />
+        <div
+          className="rounded-xl overflow-hidden"
+          style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
+        >
+          {[
+            { icon: '📅', freq: '每週一', desc: 'social/metrics.json 更新（Threads / LINE / Vocus / FB / IG）' },
+            { icon: '📅', freq: '每月 25 日前', desc: 'finance/monthly-report.md 填寫本月收入' },
+            { icon: '📅', freq: '每次諮詢後 24h 內', desc: 'crm/client-log.md 填入諮詢記錄' },
+          ].map((item, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-3 px-4 py-3"
+              style={{ borderBottom: i < 2 ? '1px solid var(--border)' : 'none' }}
+            >
+              <span className="text-base shrink-0">{item.icon}</span>
+              <span className="text-xs font-semibold shrink-0" style={{ color: 'var(--accent)', minWidth: '90px' }}>{item.freq}</span>
+              <span className="text-sm" style={{ color: 'var(--text-primary)' }}>{item.desc}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* ── 近期內容排程 */}
       <section id="content">
         <SectionHeader icon="📆" title="近期內容排程" />
