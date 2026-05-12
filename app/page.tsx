@@ -449,7 +449,7 @@ export default async function Home() {
     calMd, outreachMd, financeMd, ga4Md,
     ga4Live, websiteGA4,
     followerHistRaw, socialMetricsRaw,
-    lineFollowers, , bookingStats,
+    lineFollowers, kitSubscribers, bookingStats,
     knowledgeResult,
     dailyRevenueRaw,
     externalRevenueRaw,
@@ -540,9 +540,9 @@ export default async function Home() {
         </div>
       )}
 
-      {/* ── ⚠️ Tim 必做：COMEBACK10 優惠券（完成後告知 Claude 將 showComebackAlert 改 false）*/}
+      {/* ── ⚠️ Tim 必做：COMEBACK10 優惠券（建立後將 hr/inventory.json comeback10_banner_active 改 false 並 push）*/}
       {(() => {
-        const showComebackAlert = true;
+        const showComebackAlert = (inventory as any)?.comeback10_banner_active !== false;
         return showComebackAlert ? (
           <div className="rounded-xl px-4 py-2.5 flex items-start gap-2"
             style={{ backgroundColor: '#f9731615', border: '1px solid #f9731660', borderLeft: '3px solid #f97316' }}>
@@ -552,7 +552,7 @@ export default async function Home() {
                 Tim 必做：在預約後台建立 COMEBACK10 優惠券
               </span>
               <span className="text-xs" style={{ color: '#a3611c' }}>
-                百分比折扣 10%・active・usageLimit: 0 ｜ 完成後告知 Claude 關閉此提醒
+                百分比折扣 10%・active・usageLimit: 0 ｜ 建立完成後，將 hr/inventory.json → comeback10_banner_active 設 false 並 push tzlth-hq，提醒 60 秒內自動消失
               </span>
             </div>
           </div>
@@ -704,8 +704,10 @@ export default async function Home() {
             rows={[
               { label: 'LINE 好友',  value: lineFollowers != null ? lineFollowers.toLocaleString() : ((socialMetrics?.line?.friends ?? (inventory as any)?.line_followers)?.toLocaleString() ?? '—'), unit: '人', note: lineFollowers != null ? '自動' : '手動' },
               { label: '方格子',     value: socialMetrics?.vocus?.followers    != null ? socialMetrics.vocus.followers.toLocaleString()    : '—', unit: '人', note: '手動' },
+              { label: '方格子月閱讀', value: socialMetrics?.vocus?.monthly_reads != null ? socialMetrics.vocus.monthly_reads.toLocaleString() : '—', unit: '次', note: '手動週一填' },
               { label: 'Facebook',  value: socialMetrics?.facebook?.followers  != null ? socialMetrics.facebook.followers.toLocaleString()  : '—', unit: '人' },
               { label: 'Instagram', value: socialMetrics?.instagram?.followers != null ? socialMetrics.instagram.followers.toLocaleString() : '—', unit: '人' },
+              { label: '電子報訂閱', value: kitSubscribers != null ? kitSubscribers.toLocaleString() : '—', unit: '人', note: '自動' },
             ]}
           />
 
