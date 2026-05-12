@@ -12,6 +12,7 @@ export interface System {
   pending_tasks: string[];
   notes: string;
   hq_archive_status: string;
+  verified_at?: string | null;
   current_followers?: number;
   follower_recorded_at?: string;
 }

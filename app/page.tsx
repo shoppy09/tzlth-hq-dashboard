@@ -7,6 +7,8 @@ import { CommandCenter } from '@/components/CommandCenter';
 import { DailyChecklist } from '@/components/DailyChecklist';
 import { TaskTabView } from '@/components/TaskTabView';
 import { FinancePanel } from '@/components/FinancePanel';
+import { SparklineTooltip } from '@/components/SparklineTooltip';
+import { CommandsSearch } from '@/components/CommandsSearch';
 import { System } from '@/lib/types';
 
 // ─── Types ────────────────────────────────────────────────
@@ -288,7 +290,7 @@ function KpiCard({ icon, title, rows, health, sparkData, accentColor }: {
       <div className="flex items-center justify-between mb-1.5">
         <span className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{icon} {title}</span>
         <div className="flex items-center gap-2">
-          {sparkData && sparkData.length >= 2 && <Sparkline data={sparkData} color={accent} />}
+          {sparkData && sparkData.length >= 2 && <SparklineTooltip data={sparkData} color={accent} />}
           {health != null && (
             <span
               className="text-xs font-bold tabular-nums px-1.5 py-0.5 rounded"
@@ -538,6 +540,25 @@ export default async function Home() {
         </div>
       )}
 
+      {/* ── ⚠️ Tim 必做：COMEBACK10 優惠券（完成後告知 Claude 將 showComebackAlert 改 false）*/}
+      {(() => {
+        const showComebackAlert = true;
+        return showComebackAlert ? (
+          <div className="rounded-xl px-4 py-2.5 flex items-start gap-2"
+            style={{ backgroundColor: '#f9731615', border: '1px solid #f9731660', borderLeft: '3px solid #f97316' }}>
+            <span className="text-sm shrink-0">⚠️</span>
+            <div>
+              <span className="text-xs font-semibold block" style={{ color: '#f97316' }}>
+                Tim 必做：在預約後台建立 COMEBACK10 優惠券
+              </span>
+              <span className="text-xs" style={{ color: '#a3611c' }}>
+                百分比折扣 10%・active・usageLimit: 0 ｜ 完成後告知 Claude 關閉此提醒
+              </span>
+            </div>
+          </div>
+        ) : null;
+      })()}
+
       {/* ── 總覽 */}
       <section id="overview">
         <div className="grid grid-cols-3 gap-3 mb-4">
@@ -608,7 +629,7 @@ export default async function Home() {
 
         {/* OPERATION */}
         <SectionLabel>OPERATION</SectionLabel>
-        <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
 
           <KpiCard icon="🌐" title="官網" accentColor="#4f8ef7"
             health={systems.find(s => s.id === 'SYS-01')?.health_score}
@@ -664,7 +685,7 @@ export default async function Home() {
 
         {/* SOCIAL */}
         <SectionLabel>SOCIAL</SectionLabel>
-        <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
 
           <KpiCard icon="📊" title="看板" accentColor="#22c55e"
             health={systems.find(s => s.id === 'SYS-02')?.health_score}
@@ -765,7 +786,18 @@ export default async function Home() {
 
       {/* ── 近期內容排程 */}
       <section id="content">
-        <SectionHeader icon="📆" title="近期內容排程" />
+        <div className="flex items-center justify-between mb-2">
+          <SectionHeader icon="📆" title="近期內容排程" />
+          <a
+            href="https://github.com/shoppy09/tzlth-hq/edit/main/content/content-calendar.md"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs px-2.5 py-1 rounded-lg shrink-0"
+            style={{ backgroundColor: 'var(--accent-bg)', color: 'var(--accent)', border: '1px solid var(--accent)', textDecoration: 'none', whiteSpace: 'nowrap' }}
+          >
+            編輯 ↗
+          </a>
+        </div>
         {contentItems.length > 0 ? (
           <div
             className="rounded-xl divide-y overflow-hidden"
@@ -818,22 +850,12 @@ export default async function Home() {
         if (!cmdRef?.content) return null;
         return (
           <section id="commands" style={{ marginBottom: '1.5rem' }}>
-            <SectionHeader icon="⚡" title="指令清單" note="SKILL 指令 14 個 ＋ CLI 斜線指令 8 個" />
+            <SectionHeader icon="⚡" title="指令清單" note="SKILL ＋ CLI 指令速查" />
             <div
-              className="rounded-xl overflow-hidden"
+              className="rounded-xl overflow-hidden px-4 py-3"
               style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
             >
-              <pre
-                className="text-xs leading-relaxed whitespace-pre-wrap px-4 py-3"
-                style={{
-                  color: 'var(--text-primary)',
-                  fontFamily: '"Noto Sans TC", "PingFang TC", sans-serif',
-                  maxHeight: '520px',
-                  overflowY: 'auto',
-                }}
-              >
-                {cmdRef.content}
-              </pre>
+              <CommandsSearch content={cmdRef.content} />
             </div>
           </section>
         );
@@ -911,7 +933,9 @@ export default async function Home() {
                                 overflowY: 'auto',
                               }}
                             >
-                              {file.content}
+                              {file.content.length > 600
+                                ? file.content.slice(0, 600) + '\n\n…（完整內容請至知識庫網站查看）'
+                                : file.content}
                             </pre>
                           </div>
                         ) : (

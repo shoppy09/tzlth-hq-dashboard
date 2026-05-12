@@ -133,6 +133,21 @@ export function SystemCard({ sys }: { sys: System }) {
             </div>
           )}
 
+          {/* 上次驗證 */}
+          {sys.verified_at ? (() => {
+            const daysSince = Math.floor((Date.now() - new Date(sys.verified_at!).getTime()) / (1000 * 60 * 60 * 24));
+            const isStale = daysSince > 30;
+            return (
+              <div className="text-xs" style={{ color: isStale ? '#f97316' : 'var(--text-muted)' }}>
+                {isStale ? '⚠️ ' : ''}上次驗證：{sys.verified_at}（{daysSince} 天前）
+              </div>
+            );
+          })() : (
+            <div className="text-xs" style={{ color: '#f97316' }}>
+              ⚠️ 尚無驗證記錄
+            </div>
+          )}
+
           {/* 最後更新 */}
           <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
             最後更新：{sys.last_updated}
