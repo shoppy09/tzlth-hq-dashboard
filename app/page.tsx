@@ -1,10 +1,11 @@
-import { getInventory, getTasksMd, getContentCalendar, getOutreachLog, getFinanceReport, getGA4Log, getFollowerHistory, getSocialMetrics, getDailyChecklist, getKnowledgeBase, getDailyRevenue, getExternalRevenue, KnowledgeFolder } from '@/lib/github';
+import { getInventory, getTasksMd, getContentCalendar, getOutreachLog, getFinanceReport, getGA4Log, getFollowerHistory, getSocialMetrics, getDailyChecklist, getKnowledgeBase, getDailyRevenue, getExternalRevenue, getTimActions, KnowledgeFolder } from '@/lib/github';
 import type { FinanceEntry, FinanceData } from '@/lib/finance';
 import { getDiagnosisGA4Data, getWebsiteGA4Data } from '@/lib/ga4';
 import { parseTasks } from '@/lib/parse-tasks';
 import { SystemCard } from '@/components/SystemCard';
 import { CommandCenter } from '@/components/CommandCenter';
 import { DailyChecklist } from '@/components/DailyChecklist';
+import { TimActions } from '@/components/TimActions';
 import { TaskTabView } from '@/components/TaskTabView';
 import { FinancePanel } from '@/components/FinancePanel';
 import { SparklineTooltip } from '@/components/SparklineTooltip';
@@ -379,6 +380,7 @@ export default async function Home() {
   let followerHistory: FollowerPoint[]      = [];
   let knowledgeFolders: KnowledgeFolder[]   = [];
   let externalRevenueEntries: FinanceEntry[] = [];
+  let timActionsData: { id: string; title: string; detail: string; type: 'one-time' | 'monthly' | 'quarterly'; due: string | null; priority: string; source_system: string; created_at: string; completed: boolean }[] = [];
 
   // ── Core (required) ──────────────────────────────────
   try {
@@ -386,6 +388,11 @@ export default async function Home() {
     systems   = inventory.systems as System[];
     tasksMd   = await getTasksMd();
     try { dailyChecklistMd = await getDailyChecklist(); } catch { /* optional */ }
+    try {
+      const timRaw = await getTimActions();
+      const timParsed = JSON.parse(timRaw);
+      timActionsData = Array.isArray(timParsed?.actions) ? timParsed.actions : [];
+    } catch { /* optional */ }
   } catch {
     return (
       <div className="text-center py-20 text-sm" style={{ color: '#ef4444' }}>
@@ -529,6 +536,9 @@ export default async function Home() {
       {/* ── 每日任務清單 */}
       {dailyChecklistMd && <DailyChecklist md={dailyChecklistMd} />}
 
+      {/* ── Tim 待辦（跨裝置同步）*/}
+      <TimActions actions={timActionsData} />
+
       {/* ── 健康警示（有問題才顯示）*/}
       {alertSystems.length > 0 && (
         <div className="rounded-xl px-4 py-2.5 flex items-center gap-2"
@@ -539,25 +549,6 @@ export default async function Home() {
           </span>
         </div>
       )}
-
-      {/* ── ⚠️ Tim 必做：COMEBACK10 優惠券（建立後將 hr/inventory.json comeback10_banner_active 改 false 並 push）*/}
-      {(() => {
-        const showComebackAlert = (inventory as any)?.comeback10_banner_active !== false;
-        return showComebackAlert ? (
-          <div className="rounded-xl px-4 py-2.5 flex items-start gap-2"
-            style={{ backgroundColor: '#f9731615', border: '1px solid #f9731660', borderLeft: '3px solid #f97316' }}>
-            <span className="text-sm shrink-0">⚠️</span>
-            <div>
-              <span className="text-xs font-semibold block" style={{ color: '#f97316' }}>
-                Tim 必做：在預約後台建立 COMEBACK10 優惠券
-              </span>
-              <span className="text-xs" style={{ color: '#a3611c' }}>
-                百分比折扣 10%・active・usageLimit: 0 ｜ 建立完成後，將 hr/inventory.json → comeback10_banner_active 設 false 並 push tzlth-hq，提醒 60 秒內自動消失
-              </span>
-            </div>
-          </div>
-        ) : null;
-      })()}
 
       {/* ── 總覽 */}
       <section id="overview">

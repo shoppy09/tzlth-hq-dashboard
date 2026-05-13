@@ -135,6 +135,51 @@ export async function putChecklistState(
   });
 }
 
+// ─── Tim Actions (cross-device sync) ─────────────────────
+
+export async function getTimActions(): Promise<string> {
+  return fetchFile('dev/tim-actions.json');
+}
+
+const TIM_ACTIONS_STATE_PATH = 'dev/tim-actions-state.json';
+
+export async function getTimActionsState(): Promise<string> {
+  try {
+    return await fetchFile(TIM_ACTIONS_STATE_PATH, REPO, 0);
+  } catch {
+    return '{}';
+  }
+}
+
+export async function putTimActionsState(
+  state: Record<string, boolean>
+): Promise<void> {
+  const apiUrl = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${TIM_ACTIONS_STATE_PATH}`;
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${TOKEN ?? ''}`,
+    Accept: 'application/vnd.github+json',
+    'Content-Type': 'application/json',
+  };
+
+  let sha: string | undefined;
+  const getRes = await fetch(apiUrl, { headers });
+  if (getRes.ok) {
+    const data = await getRes.json() as { sha: string };
+    sha = data.sha;
+  }
+
+  const content = Buffer.from(JSON.stringify(state, null, 2)).toString('base64');
+  await fetch(apiUrl, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({
+      message: 'chore: update tim-actions state',
+      content,
+      ...(sha ? { sha } : {}),
+    }),
+  });
+}
+
 // ─── Knowledge Base ───────────────────────────────────────
 
 interface GitHubDirItem {
