@@ -380,7 +380,7 @@ export default async function Home() {
   let followerHistory: FollowerPoint[]      = [];
   let knowledgeFolders: KnowledgeFolder[]   = [];
   let externalRevenueEntries: FinanceEntry[] = [];
-  let timActionsData: { id: string; title: string; detail: string; type: 'one-time' | 'monthly' | 'quarterly'; due: string | null; priority: string; source_system: string; created_at: string; completed: boolean }[] = [];
+  let timActionsData: { id: string; title: string; detail: string; type: 'one-time' | 'weekly' | 'monthly' | 'quarterly'; due: string | null; priority: string; source_system: string; created_at: string; completed: boolean }[] = [];
 
   // ── Core (required) ──────────────────────────────────
   try {

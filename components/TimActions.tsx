@@ -6,7 +6,7 @@ interface TimAction {
   id: string;
   title: string;
   detail: string;
-  type: 'one-time' | 'monthly' | 'quarterly';
+  type: 'one-time' | 'weekly' | 'monthly' | 'quarterly';
   due: string | null;
   priority: string;
   source_system: string;
