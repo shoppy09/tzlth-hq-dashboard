@@ -13,7 +13,7 @@ import { CommandsSearch } from '@/components/CommandsSearch';
 import { System } from '@/lib/types';
 
 // ─── Types ────────────────────────────────────────────────
-interface ContentItem  { date: string; type: string; topic: string; status: string; }
+interface ContentItem  { date: string; type: string; topic: string; status: string; link?: string; }
 interface OutreachStats { sent: number; replied: number; negotiating: number; }
 interface FinanceSummary { income: string; expense: string; profit: string; }
 interface UnpaidItem { client: string; service: string; amount: number; dueDate: string; status: string; overdue: boolean; }
@@ -64,7 +64,10 @@ function parseContentCalendar(md: string): ContentItem[] {
       const cols = line.split('|').map(s => s.trim()).filter(Boolean);
       if (cols.length >= 4 && cols[0] !== '-' && cols[0] !== '' && !cols[0].includes('---')) {
         const isNew = cols.length >= 6;
-        items.push({ date: cols[0], type: cols[1], topic: isNew ? cols[3] : cols[2], status: isNew ? cols[5] : (cols[4] ?? cols[3]) });
+        const rawLink = isNew ? cols[6] : cols[5];
+        const mdMatch = rawLink?.match(/\[.*?\]\((.*?)\)/);
+        const link = mdMatch ? mdMatch[1] : (rawLink && rawLink !== '-' && rawLink !== '' ? rawLink : undefined);
+        items.push({ date: cols[0], type: cols[1], topic: isNew ? cols[3] : cols[2], status: isNew ? cols[5] : (cols[4] ?? cols[3]), link });
       }
     } else if (inTable && !line.startsWith('|')) { inTable = false; }
   }
@@ -811,7 +814,11 @@ export default async function Home() {
                       <span className="text-xs font-semibold" style={{ color: 'var(--accent)' }}>{item.date}</span>
                       <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{item.type}</span>
                     </div>
-                    <div className="text-sm truncate" style={{ color: 'var(--text-primary)' }}>{item.topic}</div>
+                    {item.link ? (
+                      <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-sm truncate block hover:underline" style={{ color: 'var(--accent)', textDecoration: 'none' }}>{item.topic}</a>
+                    ) : (
+                      <div className="text-sm truncate" style={{ color: 'var(--text-primary)' }}>{item.topic}</div>
+                    )}
                   </div>
                 </div>
                 <span
