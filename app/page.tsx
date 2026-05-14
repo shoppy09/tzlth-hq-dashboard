@@ -431,7 +431,11 @@ export default async function Home() {
   const fetchBooking = async (): Promise<BookingStats | null> => {
     const u = process.env.BOOKING_STATS_URL;
     if (!u) return null;
-    const r = await fetch(`${u}/api/stats`, { next: { revalidate: 300 } } as unknown as RequestInit);
+    const statsKey = process.env.BOOKING_STATS_KEY;
+    const r = await fetch(`${u}/api/stats`, {
+      headers: statsKey ? { Authorization: `Bearer ${statsKey}` } : {},
+      next: { revalidate: 300 }
+    } as unknown as RequestInit);
     if (!r.ok) return null;
     return r.json() as Promise<BookingStats>;
   };
