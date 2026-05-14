@@ -436,11 +436,17 @@ export default async function Home() {
   const currentYm = new Date().toISOString().slice(0, 7);
 
   // FinancePanel Task 1：從 finance.careerssl.com/api/summary 取得即時財務數字
+  // [安全修復 2026-05-14] 加入 Bearer API key 認證（server-side fetch，key 不暴露給 client）
   const fetchFinanceSummaryFromApi = async (): Promise<FinanceSummary | null> => {
     try {
+      const apiKey = process.env.FINANCE_SUMMARY_API_KEY;
+      if (!apiKey) return null; // API key 未設定時靜默跳過
       const r = await fetch(
         `https://finance.careerssl.com/api/summary?month=${currentYm}`,
-        { next: { revalidate: 300 } } as unknown as RequestInit
+        {
+          headers: { 'Authorization': `Bearer ${apiKey}` },
+          next: { revalidate: 300 },
+        } as unknown as RequestInit
       );
       if (!r.ok) return null;
       const data = await r.json() as { income_total: number; expense_total: number; net: number };
