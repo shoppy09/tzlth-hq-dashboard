@@ -1,4 +1,4 @@
-import { getInventory, getTasksMd, getContentCalendar, getOutreachLog, getFinanceReport, getGA4Log, getFollowerHistory, getSocialMetrics, getDailyChecklist, getKnowledgeBase, getDailyRevenue, getExternalRevenue, getTimActions, KnowledgeFolder } from '@/lib/github';
+import { getInventory, getTasksMd, getContentCalendar, getOutreachLog, getFinanceReport, getGA4Log, getFollowerHistory, getSocialMetrics, getDailyChecklist, getKnowledgeBase, getDailyRevenue, getExternalRevenue, getTimActions, getScheduledArticles, KnowledgeFolder } from '@/lib/github';
 import type { FinanceEntry, FinanceData } from '@/lib/finance';
 import { getDiagnosisGA4Data, getWebsiteGA4Data } from '@/lib/ga4';
 import { parseTasks } from '@/lib/parse-tasks';
@@ -474,6 +474,7 @@ export default async function Home() {
     dailyRevenueRaw,
     externalRevenueRaw,
     apiFinanceSummary,
+    scheduledArticlesRaw,
   ] = await Promise.all([
     safe(getContentCalendar()),
     safe(getOutreachLog()),
@@ -490,7 +491,9 @@ export default async function Home() {
     safe(getDailyRevenue(currentYm)),
     safe(getExternalRevenue()),
     safe(fetchFinanceSummaryFromApi()),
+    safe(getScheduledArticles()),
   ]);
+  const safeScheduledArticles = scheduledArticlesRaw ?? [];
   if (knowledgeResult) knowledgeFolders = knowledgeResult;
 
   contentItems   = calMd      ? parseContentCalendar(calMd)   : [];
@@ -840,6 +843,42 @@ export default async function Home() {
             style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
           >
             近 30 天內無排程內容 — 請更新 content/content-calendar.md
+          </div>
+        )}
+      </section>
+
+      {/* ── 文章排程佇列 */}
+      <section id="scheduled-articles">
+        <SectionHeader icon="🗓️" title="文章排程佇列"
+          note={safeScheduledArticles.filter(a => a.status === '待發布').length > 0
+            ? `${safeScheduledArticles.filter(a => a.status === '待發布').length} 篇待發布`
+            : undefined} />
+        {safeScheduledArticles.length > 0 ? (
+          <div
+            className="rounded-xl divide-y overflow-hidden"
+            style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
+          >
+            {safeScheduledArticles.map((a, i) => (
+              <div key={i} className="flex items-center justify-between px-4 py-3 gap-3">
+                <div className="min-w-0">
+                  <span className="text-xs font-semibold" style={{ color: 'var(--accent)' }}>{a.date}</span>
+                  <div className="text-sm truncate" style={{ color: 'var(--text-primary)' }}>{a.title}</div>
+                </div>
+                <span
+                  className="text-xs font-semibold px-2 py-0.5 rounded shrink-0"
+                  style={{ backgroundColor: statusColor(a.status) + '20', color: statusColor(a.status) }}
+                >
+                  {a.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div
+            className="rounded-xl px-4 py-3 text-sm"
+            style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+          >
+            目前無待發布或近期已發布的排程文章
           </div>
         )}
       </section>

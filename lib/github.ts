@@ -180,6 +180,65 @@ export async function putTimActionsState(
   });
 }
 
+// ─── Scheduled Articles (tzlth-website repo) ─────────────
+
+interface ScheduledArticle {
+  slug: string;
+  title: string;
+  date: string;
+  status: '待發布' | '已發布';
+}
+
+export async function getScheduledArticles(): Promise<ScheduledArticle[]> {
+  // Step 1: List blog/scheduled/ directory in tzlth-website repo
+  const res = await fetch(
+    `https://api.github.com/repos/${OWNER}/tzlth-website/contents/blog/scheduled`,
+    {
+      headers: { Authorization: `Bearer ${TOKEN}`, Accept: 'application/vnd.github.v3+json' },
+      next: { revalidate: 300 },
+    } as RequestInit
+  );
+  if (!res.ok) return [];
+  const data = await res.json();
+  if (!Array.isArray(data)) return [];
+
+  const jsonFiles = (data as { name: string; type: string; path: string }[]).filter(
+    f => f.type === 'file' && f.name.endsWith('.json')
+  );
+  if (jsonFiles.length === 0) return [];
+
+  // Step 2: Taiwan date strings for filter boundary
+  const today = new Date().toLocaleDateString('sv', { timeZone: 'Asia/Taipei' });
+  const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)
+    .toLocaleDateString('sv', { timeZone: 'Asia/Taipei' });
+
+  // Step 3: Fetch each JSON individually — per-file error isolation
+  const articles = (
+    await Promise.all(
+      jsonFiles.map(async (f): Promise<ScheduledArticle | null> => {
+        try {
+          const content = await fetchFile(f.path, 'tzlth-website', 300);
+          const parsed = JSON.parse(content) as { slug?: string; title?: string; date?: string };
+          if (!parsed.slug || !parsed.title || !parsed.date) return null;
+          return {
+            slug: parsed.slug,
+            title: parsed.title,
+            date: parsed.date,
+            status: parsed.date <= today ? '已發布' : '待發布',
+          };
+        } catch {
+          return null;
+        }
+      })
+    )
+  ).filter((a): a is ScheduledArticle => a !== null);
+
+  // Step 4: Method B — pending (all) + recent 14 days published, descending
+  return articles
+    .filter(a => a.date >= cutoff)
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
+
 // ─── Knowledge Base ───────────────────────────────────────
 
 interface GitHubDirItem {

@@ -13,6 +13,7 @@ const navItems = [
   { label: '指令',  href: '#command',     highlight: true },
   { label: '任務',  href: '#tasks' },
   { label: '內容',  href: '#content' },
+  { label: '排程文章', href: '#scheduled-articles' },
   { label: '外展',  href: '#outreach' },
   { label: '財務',  href: '#finance' },
   { label: '系統',  href: '#systems' },
