@@ -190,53 +190,66 @@ interface ScheduledArticle {
 }
 
 export async function getScheduledArticles(): Promise<ScheduledArticle[]> {
-  // Step 1: List blog/scheduled/ directory in tzlth-website repo
-  const res = await fetch(
-    `https://api.github.com/repos/${OWNER}/tzlth-website/contents/blog/scheduled`,
-    {
-      headers: { Authorization: `Bearer ${TOKEN}`, Accept: 'application/vnd.github.v3+json' },
-      next: { revalidate: 300 },
-    } as RequestInit
-  );
-  if (!res.ok) return [];
-  const data = await res.json();
-  if (!Array.isArray(data)) return [];
-
-  const jsonFiles = (data as { name: string; type: string; path: string }[]).filter(
-    f => f.type === 'file' && f.name.endsWith('.json')
-  );
-  if (jsonFiles.length === 0) return [];
-
-  // Step 2: Taiwan date strings for filter boundary
+  // Taiwan date boundaries
   const today = new Date().toLocaleDateString('sv', { timeZone: 'Asia/Taipei' });
   const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)
     .toLocaleDateString('sv', { timeZone: 'Asia/Taipei' });
 
-  // Step 3: Fetch each JSON individually — per-file error isolation
-  const articles = (
-    await Promise.all(
-      jsonFiles.map(async (f): Promise<ScheduledArticle | null> => {
-        try {
-          const content = await fetchFile(f.path, 'tzlth-website', 300);
-          const parsed = JSON.parse(content) as { slug?: string; title?: string; date?: string };
-          if (!parsed.slug || !parsed.title || !parsed.date) return null;
-          return {
-            slug: parsed.slug,
-            title: parsed.title,
-            date: parsed.date,
-            status: parsed.date <= today ? '已發布' : '待發布',
-          };
-        } catch {
-          return null;
-        }
-      })
-    )
-  ).filter((a): a is ScheduledArticle => a !== null);
+  // ── Source A: blog/scheduled/ → 待發布文章（未到期的 JSON 檔）
+  // publish_scheduled.py 發布後會刪除此檔，資料夾可能不存在（空目錄 = Git 不追蹤）
+  const pendingArticles = await (async (): Promise<ScheduledArticle[]> => {
+    try {
+      const res = await fetch(
+        `https://api.github.com/repos/${OWNER}/tzlth-website/contents/blog/scheduled`,
+        {
+          headers: { Authorization: `Bearer ${TOKEN}`, Accept: 'application/vnd.github.v3+json' },
+          next: { revalidate: 300 },
+        } as RequestInit
+      );
+      if (!res.ok) return []; // 404 = 資料夾不存在（無排程文章），正常情況
+      const data = await res.json();
+      if (!Array.isArray(data)) return [];
 
-  // Step 4: Method B — pending (all) + recent 14 days published, descending
-  return articles
-    .filter(a => a.date >= cutoff)
-    .sort((a, b) => b.date.localeCompare(a.date));
+      const jsonFiles = (data as { name: string; type: string; path: string }[]).filter(
+        f => f.type === 'file' && f.name.endsWith('.json')
+      );
+
+      return (
+        await Promise.all(
+          jsonFiles.map(async (f): Promise<ScheduledArticle | null> => {
+            try {
+              const content = await fetchFile(f.path, 'tzlth-website', 300);
+              const parsed = JSON.parse(content) as { slug?: string; title?: string; date?: string };
+              if (!parsed.slug || !parsed.title || !parsed.date) return null;
+              return { slug: parsed.slug, title: parsed.title, date: parsed.date, status: '待發布' };
+            } catch {
+              return null;
+            }
+          })
+        )
+      ).filter((a): a is ScheduledArticle => a !== null);
+    } catch {
+      return [];
+    }
+  })();
+
+  // ── Source B: blog/articles.json → 最近 14 天已發布文章
+  const publishedArticles = await (async (): Promise<ScheduledArticle[]> => {
+    try {
+      const raw = await fetchFile('blog/articles.json', 'tzlth-website', 300);
+      const all = JSON.parse(raw) as { slug?: string; title?: string; date?: string }[];
+      if (!Array.isArray(all)) return [];
+      return all
+        .filter(a => a.slug && a.title && a.date && a.date <= today && a.date >= cutoff)
+        .map(a => ({ slug: a.slug!, title: a.title!, date: a.date!, status: '已發布' as const }));
+    } catch {
+      return [];
+    }
+  })();
+
+  // ── Merge: pending (all future) + recent published (14 days), descending by date
+  const merged = [...pendingArticles, ...publishedArticles];
+  return merged.sort((a, b) => b.date.localeCompare(a.date));
 }
 
 // ─── Knowledge Base ───────────────────────────────────────
