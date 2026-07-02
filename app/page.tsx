@@ -536,7 +536,8 @@ export default async function Home() {
   const quickLinks   = systems.filter(s => s.url && (s.status === 'live' || s.status === 'active') && s.id !== 'SYS-07' && s.id !== 'SYS-05');
   const quickLinkLabel: Record<string, string> = { 'SYS-02': 'Threads分析' };
 
-  const threadsFollowers   = (systems.find(s => s.id === 'SYS-02') as any)?.current_followers ?? null;
+  // RCF-117 SoT：Threads 粉絲數讀 social/metrics.json（週一 cron 自動同步），不再讀 inventory 鏡像欄
+  const threadsFollowers   = socialMetrics?.threads?.followers ?? null;
   const followerSparkData  = (followerHistory as FollowerPoint[]).map(p => p.followers);
   if (threadsFollowers && (followerHistory.length === 0 || (followerHistory as FollowerPoint[])[followerHistory.length - 1].followers !== threadsFollowers)) {
     followerSparkData.push(threadsFollowers as number);
@@ -709,7 +710,7 @@ export default async function Home() {
           <KpiCard icon="💬" title="社群平台" accentColor="#06b6d4"
             health={systems.find(s => s.id === 'SYS-05')?.health_score}
             rows={[
-              { label: 'LINE 好友',  value: lineFollowers != null ? lineFollowers.toLocaleString() : ((socialMetrics?.line?.friends ?? (inventory as any)?.line_followers)?.toLocaleString() ?? '—'), unit: '人', note: lineFollowers != null ? '自動' : '手動' },
+              { label: 'LINE 好友',  value: lineFollowers != null ? lineFollowers.toLocaleString() : (socialMetrics?.line?.friends?.toLocaleString() ?? '—'), unit: '人', note: lineFollowers != null ? '自動' : '手動' },
               { label: '方格子',     value: socialMetrics?.vocus?.followers    != null ? socialMetrics.vocus.followers.toLocaleString()    : '—', unit: '人', note: '手動' },
               { label: '方格子月閱讀', value: socialMetrics?.vocus?.monthly_reads != null ? socialMetrics.vocus.monthly_reads.toLocaleString() : '—', unit: '次', note: '手動週一填' },
               { label: 'Facebook',  value: socialMetrics?.facebook?.followers  != null ? socialMetrics.facebook.followers.toLocaleString()  : '—', unit: '人' },
