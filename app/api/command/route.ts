@@ -78,7 +78,7 @@ export async function POST(req: Request) {
     async start(controller) {
       try {
         const stream = await ai.models.generateContentStream({
-          model: 'gemini-flash-latest',
+          model: 'gemini-2.5-flash',
           config: { systemInstruction: SYSTEM_PROMPT },
           contents: [{ role: 'user', parts: [{ text: userMessage }] }],
         });
