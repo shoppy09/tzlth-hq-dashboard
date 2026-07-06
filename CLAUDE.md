@@ -12,7 +12,7 @@
 - Framework：Next.js + TypeScript
 - 部署：Vercel（hq-dashboard-alpha.vercel.app）
 - 資料來源：讀取本機 tzlth-hq/ 各 Markdown 檔案 + GA4 API + Threads API
-- 指令中心：Google Gemini 2.0 Flash（GOOGLE_API_KEY）
+- 指令中心：Google Gemini 2.5 Flash（GOOGLE_API_KEY；2026-06-01 自 2.0-flash 遷移——2.0 已停用；⚠️ 2.5-flash 2026-10-16 退場，遷移追蹤 tzlth-hq RCF-123 / tasks L322）
 
 ## Vercel 環境變數清單
 | 變數名稱 | 用途 | 最後更新 |
@@ -42,6 +42,11 @@
 
 | 日期 | 修改內容 | 執行視窗 | 狀態 |
 |------|---------|---------|------|
+| 2026-07-06 | 全系統盤點 G-07-1 修正：L15 指令中心記載 2.0 Flash→2.5 Flash（實裝 06-01 已遷移，文件漂移 35 天）＋補登 4-7 月缺席修改記錄 4 筆（下列 ↓）| 總部視窗 | ✅ |
+| 2026-07-02 | （補登）A-durable：page.tsx 3 處改讀 social/metrics.json SoT（原直讀 inventory 鏡像欄，RCF-117）＋ npx vercel --prod | 總部視窗 | ✅ |
+| 2026-07-01 | （補登）RCF-118 B-pre：middleware.ts 全站 HTTP Basic Auth（fail-closed，commit cd9b2dd）；07-02 部署+curl 401 驗證 | 總部視窗 | ✅ |
+| 2026-06-01 | （補登）Gemini 指令中心 2.0-flash→2.5-flash 遷移（2.0 停用，commit 2383d1e→b354043）| 總部視窗 | ✅ |
+| 2026-05-24 | （補登）FinancePanel 整合（finance.careerssl.com/api/summary，FINANCE_SUMMARY_API_KEY）| 總部視窗 | ✅ |
 | 2026-07-02 | 收尾規則指針化（RCF-120 D6）：舊「收尾四/五件事」清單 → 總部 CLAUDE.md 收尾七件事指針式（部署特例保留在地）；消除與主檔的版本漂移 | 總部視窗 | ✅ |
 | 2026-04-13 | 新增知識庫區塊（#knowledge，GitHub 4 資料夾，methodology/operations 顯示全文，decisions/reference 顯示清單）| 總部視窗 | ✅ |
 | 2026-04-13 | 導航列新增「知識庫」按鈕（layout.tsx）| 總部視窗 | ✅ |
