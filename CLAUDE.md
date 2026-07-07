@@ -42,6 +42,7 @@
 
 | 日期 | 修改內容 | 執行視窗 | 狀態 |
 |------|---------|---------|------|
+| 2026-07-07 | L444 近 6 月收支趨勢 mini 圖（Tim「執行」，A+D+口徑統一）：lib/finance.ts +buildLedgerTrend（ledger 實收制 status='received'，與 SYS-09 /reports、月底結帳月報三方一致；external-revenue 不併入防口徑漂移）+ FinanceTrend.tsx（收/支 bar+淨利，含「完整月報 ↗」連結）+ github.ts getExpenseLedger + FinancePanel/page.tsx 接線。df16d4b build✅→push→vercel Ready；Tim 登入態實測 6 月數字逐月核對全中；另揪既有 bug：本月財務卡顯示 4 月舊數（summary API fallback），記 tzlth-hq tasks P3 | 總部視窗 | ✅ |
 | 2026-07-07 | 客戶穿透視圖 /clients v0 上線（B-b 啟動，RCF-125，Tim「執行」）：lib/crm.ts（依 tzlth-hq strategy/customer-360-spec.md 資料契約 parse client-log + income ledger join；營收一律 ledger 即時計算；PII 資料層阻斷只萃取 🟢 欄）+ app/clients/page.tsx（列表/回訪標記/timeline）+ layout nav +客戶 + github.ts 兩 fetcher。be48f4b build✅→push→`npx vercel --prod` Ready；實測 21 客戶/回訪 1/NT$5,550/零 PII/curl 401；deploy-verify SYS-07-2026-07-07 | 總部視窗 | ✅ |
 | 2026-07-06 | 全系統盤點 G-07-1 修正：L15 指令中心記載 2.0 Flash→2.5 Flash（實裝 06-01 已遷移，文件漂移 35 天）＋補登 4-7 月缺席修改記錄 4 筆（下列 ↓）| 總部視窗 | ✅ |
 | 2026-07-02 | （補登）A-durable：page.tsx 3 處改讀 social/metrics.json SoT（原直讀 inventory 鏡像欄，RCF-117）＋ npx vercel --prod | 總部視窗 | ✅ |
