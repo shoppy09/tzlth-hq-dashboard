@@ -1,8 +1,9 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { FinanceInput } from '@/components/FinanceInput';
+import { FinanceTrend } from '@/components/FinanceTrend';
 import { computeMonthlyTotals, groupByMonth } from '@/lib/finance';
-import type { FinanceEntry, MonthGroup } from '@/lib/finance';
+import type { FinanceEntry, MonthGroup, MonthlyTotals } from '@/lib/finance';
 
 // ─── 既有介面（與 page.tsx 保持相容）───────────────────────
 interface FinanceSummary { income: string; expense: string; profit: string; }
@@ -277,6 +278,7 @@ export function FinancePanel({
   syncedAt,
   cumulativeProfitAvailable,
   initialEntries,
+  trendMonths,
 }: {
   financeSummary: FinanceSummary | null;
   unpaidSummary: UnpaidSummary | null;
@@ -284,6 +286,7 @@ export function FinancePanel({
   syncedAt: string | null;
   cumulativeProfitAvailable: boolean;
   initialEntries: FinanceEntry[];
+  trendMonths?: MonthlyTotals[];
 }) {
   // ── 狀態 ─────────────────────────────────────────────
   const [tab, setTab]       = useState<PanelTab>('overview');
@@ -334,6 +337,13 @@ export function FinancePanel({
           manualIncome={manualTotals.income}
           manualExpense={manualTotals.expense}
         />
+      )}
+
+      {/* 近 6 月收支趨勢（L444）— 僅概覽 Tab 顯示 */}
+      {tab === 'overview' && trendMonths && trendMonths.length > 0 && (
+        <div className="mt-3">
+          <FinanceTrend months={trendMonths} />
+        </div>
       )}
 
       {tab === 'input' && (

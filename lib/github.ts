@@ -305,3 +305,8 @@ export async function getClientLog(): Promise<string> {
 export async function getIncomeLedger(): Promise<string> {
   return fetchFile('finance/ledger/income-2026.json');
 }
+
+// ─── 月收支趨勢（L444，RCF-009 原設計「6個月趨勢圖」補完）──
+export async function getExpenseLedger(): Promise<string> {
+  return fetchFile('finance/ledger/expense-2026.json');
+}

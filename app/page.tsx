@@ -1,5 +1,6 @@
-import { getInventory, getTasksMd, getContentCalendar, getOutreachLog, getFinanceReport, getGA4Log, getFollowerHistory, getSocialMetrics, getDailyChecklist, getKnowledgeBase, getDailyRevenue, getExternalRevenue, getTimActions, getScheduledArticles, KnowledgeFolder } from '@/lib/github';
-import type { FinanceEntry, FinanceData } from '@/lib/finance';
+import { getInventory, getTasksMd, getContentCalendar, getOutreachLog, getFinanceReport, getGA4Log, getFollowerHistory, getSocialMetrics, getDailyChecklist, getKnowledgeBase, getDailyRevenue, getExternalRevenue, getTimActions, getScheduledArticles, getIncomeLedger, getExpenseLedger, KnowledgeFolder } from '@/lib/github';
+import { buildLedgerTrend } from '@/lib/finance';
+import type { FinanceEntry, FinanceData, MonthlyTotals, LedgerFile } from '@/lib/finance';
 import { getDiagnosisGA4Data, getWebsiteGA4Data } from '@/lib/ga4';
 import { parseTasks } from '@/lib/parse-tasks';
 import { SystemCard } from '@/components/SystemCard';
@@ -475,6 +476,8 @@ export default async function Home() {
     externalRevenueRaw,
     apiFinanceSummary,
     scheduledArticlesRaw,
+    incomeLedgerRaw,
+    expenseLedgerRaw,
   ] = await Promise.all([
     safe(getContentCalendar()),
     safe(getOutreachLog()),
@@ -492,6 +495,8 @@ export default async function Home() {
     safe(getExternalRevenue()),
     safe(fetchFinanceSummaryFromApi()),
     safe(getScheduledArticles()),
+    safe(getIncomeLedger()),
+    safe(getExpenseLedger()),
   ]);
   const safeScheduledArticles = scheduledArticlesRaw ?? [];
   if (knowledgeResult) knowledgeFolders = knowledgeResult;
@@ -516,6 +521,15 @@ export default async function Home() {
   } catch { /* ignore */ }
   // 累計淨利需要 ≥2 月歷史資料才有意義（本階段僅 1 個月,標記 false）
   const cumulativeProfitAvailable = false;
+  // 近 6 月收支趨勢（L444）：ledger 實收制口徑，與 SYS-09 /reports、月報一致
+  let trendMonths: MonthlyTotals[] = [];
+  try {
+    if (incomeLedgerRaw && expenseLedgerRaw) {
+      const incLed = JSON.parse(incomeLedgerRaw) as LedgerFile;
+      const expLed = JSON.parse(expenseLedgerRaw) as LedgerFile;
+      trendMonths = buildLedgerTrend(incLed.transactions ?? [], expLed.transactions ?? [], currentYm, 6);
+    }
+  } catch { /* ignore */ }
   // external-revenue.json → 手動財務記錄（初始狀態由 SSR 載入，新增後由 Client state 更新）
   try {
     if (externalRevenueRaw) {
@@ -754,6 +768,7 @@ export default async function Home() {
             syncedAt={syncedAt}
             cumulativeProfitAvailable={cumulativeProfitAvailable}
             initialEntries={externalRevenueEntries}
+            trendMonths={trendMonths}
           />
         </div>
 
