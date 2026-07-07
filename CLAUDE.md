@@ -42,6 +42,7 @@
 
 | 日期 | 修改內容 | 執行視窗 | 狀態 |
 |------|---------|---------|------|
+| 2026-07-07 | 客戶穿透視圖 /clients v0 上線（B-b 啟動，RCF-125，Tim「執行」）：lib/crm.ts（依 tzlth-hq strategy/customer-360-spec.md 資料契約 parse client-log + income ledger join；營收一律 ledger 即時計算；PII 資料層阻斷只萃取 🟢 欄）+ app/clients/page.tsx（列表/回訪標記/timeline）+ layout nav +客戶 + github.ts 兩 fetcher。be48f4b build✅→push→`npx vercel --prod` Ready；實測 21 客戶/回訪 1/NT$5,550/零 PII/curl 401；deploy-verify SYS-07-2026-07-07 | 總部視窗 | ✅ |
 | 2026-07-06 | 全系統盤點 G-07-1 修正：L15 指令中心記載 2.0 Flash→2.5 Flash（實裝 06-01 已遷移，文件漂移 35 天）＋補登 4-7 月缺席修改記錄 4 筆（下列 ↓）| 總部視窗 | ✅ |
 | 2026-07-02 | （補登）A-durable：page.tsx 3 處改讀 social/metrics.json SoT（原直讀 inventory 鏡像欄，RCF-117）＋ npx vercel --prod | 總部視窗 | ✅ |
 | 2026-07-01 | （補登）RCF-118 B-pre：middleware.ts 全站 HTTP Basic Auth（fail-closed，commit cd9b2dd）；07-02 部署+curl 401 驗證 | 總部視窗 | ✅ |
