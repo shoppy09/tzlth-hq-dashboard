@@ -19,6 +19,7 @@ const navItems = [
   { label: '系統',  href: '#systems' },
   { label: '知識庫', href: '#knowledge' },
   { label: '部門',  href: '#departments' },
+  { label: '客戶',  href: '/clients' },
 ];
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];

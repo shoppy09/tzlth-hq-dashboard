@@ -295,3 +295,13 @@ export async function getKnowledgeBase(): Promise<KnowledgeFolder[]> {
     return { key: d.key, label: d.label, icon: d.icon, files };
   }));
 }
+
+// ─── 客戶穿透視圖（B-b v0，RCF-125）────────────────────────
+// 資料契約：tzlth-hq strategy/customer-360-spec.md
+export async function getClientLog(): Promise<string> {
+  return fetchFile('crm/client-log.md');
+}
+
+export async function getIncomeLedger(): Promise<string> {
+  return fetchFile('finance/ledger/income-2026.json');
+}
