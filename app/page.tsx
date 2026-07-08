@@ -91,11 +91,25 @@ function parseOutreachLog(md: string): OutreachStats {
   };
 }
 
-function parseFinanceReport(md: string): FinanceSummary {
+// monthly-report.md 由舊到新排列（2026-04 在最前），首匹配會抓到最舊月（L452 根因 2）。
+// 取目標月 `## YYYY-MM` 區塊；不存在（當月尚未結帳）→ 取最後（最新）月份區塊。
+function extractMonthSection(md: string, ym: string): string {
+  const monthHeaders = [...md.matchAll(/^## (\d{4}-\d{2})[^\n]*$/gm)];
+  if (monthHeaders.length === 0) return md;
+  const target = monthHeaders.find(h => h[1] === ym) ?? monthHeaders[monthHeaders.length - 1];
+  const start = target.index ?? 0;
+  // 邊界＝下一個任意 `## ` 標題（含「## 歷史月報」等非月份節，避免尾月區塊吞進後續節）
+  const allHeaders = [...md.matchAll(/^## [^\n]*$/gm)];
+  const next = allHeaders.find(h => (h.index ?? 0) > start);
+  return md.slice(start, next ? next.index : undefined);
+}
+
+function parseFinanceReport(md: string, ym: string): FinanceSummary {
+  const section = extractMonthSection(md, ym);
   return {
-    income:  md.match(/本月收入合計：NT\$([^\s\n\*]+)/)?.[1]           ?? '—',
-    expense: md.match(/本月支出合計：NT\$([^\s\n\*]+)/)?.[1]           ?? '—',
-    profit:  md.match(/\*\*本月淨利\*\*\s*\|\s*\*\*([^*\n]+)\*\*/)?.[1] ?? '—',
+    income:  section.match(/本月收入合計：NT\$([^\s\n\*]+)/)?.[1]           ?? '—',
+    expense: section.match(/本月支出合計：NT\$([^\s\n\*]+)/)?.[1]           ?? '—',
+    profit:  section.match(/\*\*本月淨利\*\*\s*\|\s*\*\*([^*\n]+)\*\*/)?.[1] ?? '—',
   };
 }
 
@@ -115,9 +129,10 @@ function parseDueDate(s: string): Date | null {
   return null;
 }
 
-function parseUnpaidTracking(md: string): UnpaidSummary {
+function parseUnpaidTracking(md: string, ym: string): UnpaidSummary {
   const items: UnpaidItem[] = [];
-  const lines = md.split('\n');
+  // 同 parseFinanceReport：只解析目標月（缺則最新月）區塊，否則首匹配抓到最舊月的未收款表（L452）
+  const lines = extractMonthSection(md, ym).split('\n');
   let inSection = false;
   let inTable = false;
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -441,7 +456,8 @@ export default async function Home() {
     return r.json() as Promise<BookingStats>;
   };
 
-  const currentYm = new Date().toISOString().slice(0, 7);
+  // 台灣時區取當月（toISOString=UTC，每月 1 日 00:00-08:00 台灣時間會查錯月，L452 微修）
+  const currentYm = new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 7);
 
   // FinancePanel Task 1：從 finance.careerssl.com/api/summary 取得即時財務數字
   // [安全修復 2026-05-14] 加入 Bearer API key 認證（server-side fetch，key 不暴露給 client）
@@ -504,11 +520,11 @@ export default async function Home() {
   contentItems   = calMd      ? parseContentCalendar(calMd)   : [];
   outreachStats  = outreachMd ? parseOutreachLog(outreachMd)  : null;
   // API 優先（即時 ledger 數字），fallback 到 monthly-report.md 解析
-  financeSummary = apiFinanceSummary ?? (financeMd ? parseFinanceReport(financeMd) : null);
+  financeSummary = apiFinanceSummary ?? (financeMd ? parseFinanceReport(financeMd, currentYm) : null);
   ga4Row         = ga4Md      ? parseGA4Log(ga4Md)            : null;
 
   // RCF-009 Phase 4:未收款 + 自動對賬資料
-  const unpaidSummary: UnpaidSummary | null = financeMd ? parseUnpaidTracking(financeMd) : null;
+  const unpaidSummary: UnpaidSummary | null = financeMd ? parseUnpaidTracking(financeMd, currentYm) : null;
   let viewTotals: ViewTotals | null = null;
   let syncedAt: string | null = null;
   try {
