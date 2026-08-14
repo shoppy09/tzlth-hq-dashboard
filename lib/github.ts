@@ -47,25 +47,15 @@ export async function getDailyRevenue(ym: string): Promise<string | null> {
   }
 }
 
-// 近 N 個月的 daily-revenue（趨勢圖預留 API，本次不做 UI）
-export async function getRecentDailyRevenues(nMonths = 6): Promise<Array<{ ym: string; raw: string | null }>> {
-  const now = new Date();
-  const months: string[] = [];
-  for (let i = 0; i < nMonths; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
-  }
-  const results = await Promise.all(months.map(async ym => ({ ym, raw: await getDailyRevenue(ym) })));
-  return results;
-}
+// 2026-08-14 移除 getRecentDailyRevenues（趨勢圖預留 API，全史零呼叫）：
+// 近 6 月趨勢已由 lib/finance.ts buildLedgerTrend（ledger 實收制口徑）實現於 page.tsx，預留永久落空。
 
 export async function getGA4Log() {
   return fetchFile('product/ga4-weekly-log.md');
 }
 
-export async function getSocialLog() {
-  return fetchFile('social/weekly-log.md');
-}
+// 2026-08-14 移除 getSocialLog（讀 social/weekly-log.md，該檔 2026-07-06 廢止、批次 1B ④）：
+// 社群 KPI 單一來源＝social/metrics.json，已由下方 getSocialMetrics 供應；本函式零呼叫者。
 
 export async function getFollowerHistory() {
   // Try threads-dashboard repo first (updated by auto-fetch.bat), fall back to tzlth-hq
@@ -84,9 +74,7 @@ export async function getSocialMetrics() {
   return fetchFile('social/metrics.json');
 }
 
-export async function getDailyLog() {
-  return fetchFile('reports/daily-log.md');
-}
+// 2026-08-14 移除 getDailyLog（reports/daily-log.md，全史零呼叫；檔案本身仍活躍，僅儀表板不消費）。
 
 // ─── Finance external revenue ─────────────────────────
 export async function getExternalRevenue(): Promise<string> {
