@@ -26,9 +26,8 @@ export async function getTasksMd() {
   return fetchFile('dev/tasks.md');
 }
 
-export async function getOutreachLog() {
-  return fetchFile('business/outreach-log.md');
-}
+// getOutreachLog 已於 2026-08-17 移除：business/outreach-log.md 2026-05-27 廢棄
+// （SoT＝Google Sheets「發信日誌」分頁），外展活動同日裁決凍結，無消費者。
 
 export async function getContentCalendar() {
   return fetchFile('content/content-calendar.md');

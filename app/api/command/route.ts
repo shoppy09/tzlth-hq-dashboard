@@ -1,5 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
-import { getInventory, getTasksMd, getContentCalendar, getOutreachLog, getFinanceReport } from '@/lib/github';
+import { getInventory, getTasksMd, getContentCalendar, getFinanceReport } from '@/lib/github';
 
 const SYSTEM_PROMPT = `你是職涯停看聽總部（TZLTH-HQ）的 CEO 助理，協助顧問蒲朝棟 Tim 管理工作室的各項系統與營運。
 
@@ -27,6 +27,11 @@ export async function POST(req: Request) {
 
   const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
 
+  // 外展資料源 business/outreach-log.md 已於 2026-05-27 廢棄、2026-08-17 外展活動裁決凍結，
+  // 儀表板不再抓取。改注入一行事實說明，避免助理在無資料時憑空推測外展進度。
+  const OUTREACH_NOTE =
+    '\n\n## 外展記錄\n外展活動自 2026-08-17 起凍結；發信追蹤唯一來源為 Google Sheets「發信日誌」分頁，儀表板無法讀取。回答外展相關問題時請據實說明無資料，不要推測數字。';
+
   // Fetch relevant GitHub data based on command keywords
   let dataContext = '';
   const lowerCmd = command.toLowerCase();
@@ -37,11 +42,10 @@ export async function POST(req: Request) {
 
   try {
     if (needsFullData) {
-      const [inventory, tasks, content, outreach, finance] = await Promise.allSettled([
+      const [inventory, tasks, content, finance] = await Promise.allSettled([
         getInventory(),
         getTasksMd(),
         getContentCalendar(),
-        getOutreachLog(),
         getFinanceReport(),
       ]);
       if (inventory.status === 'fulfilled')
@@ -50,8 +54,7 @@ export async function POST(req: Request) {
         dataContext += `\n\n## 任務清單\n${tasks.value}`;
       if (content.status === 'fulfilled' && content.value)
         dataContext += `\n\n## 內容行事曆\n${content.value}`;
-      if (outreach.status === 'fulfilled' && outreach.value)
-        dataContext += `\n\n## 外展記錄\n${outreach.value}`;
+      dataContext += OUTREACH_NOTE;
       if (finance.status === 'fulfilled' && finance.value)
         dataContext += `\n\n## 財務報告\n${finance.value}`;
     } else if (lowerCmd.includes('任務')) {
@@ -64,8 +67,7 @@ export async function POST(req: Request) {
       const f = await getFinanceReport().catch(() => '');
       if (f) dataContext += `\n\n## 財務報告\n${f}`;
     } else if (lowerCmd.includes('外展') || lowerCmd.includes('合作')) {
-      const o = await getOutreachLog().catch(() => '');
-      if (o) dataContext += `\n\n## 外展記錄\n${o}`;
+      dataContext += OUTREACH_NOTE;
     }
   } catch { /* proceed without context */ }
 

@@ -14,7 +14,7 @@ const navItems = [
   { label: '任務',  href: '#tasks' },
   { label: '內容',  href: '#content' },
   { label: '排程文章', href: '#scheduled-articles' },
-  { label: '外展',  href: '#outreach' },
+  // 「外展」nav 項已於 2026-08-17 隨 #outreach 卡片一併移除（外展活動凍結，資料源廢棄）
   { label: '財務',  href: '#finance' },
   { label: '系統',  href: '#systems' },
   { label: '知識庫', href: '#knowledge' },

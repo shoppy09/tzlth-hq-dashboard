@@ -1,4 +1,4 @@
-import { getInventory, getTasksMd, getContentCalendar, getOutreachLog, getFinanceReport, getGA4Log, getFollowerHistory, getSocialMetrics, getDailyChecklist, getKnowledgeBase, getDailyRevenue, getExternalRevenue, getTimActions, getScheduledArticles, getIncomeLedger, getExpenseLedger, KnowledgeFolder } from '@/lib/github';
+import { getInventory, getTasksMd, getContentCalendar, getFinanceReport, getGA4Log, getFollowerHistory, getSocialMetrics, getDailyChecklist, getKnowledgeBase, getDailyRevenue, getExternalRevenue, getTimActions, getScheduledArticles, getIncomeLedger, getExpenseLedger, KnowledgeFolder } from '@/lib/github';
 import { buildLedgerTrend } from '@/lib/finance';
 import type { FinanceEntry, FinanceData, MonthlyTotals, LedgerFile } from '@/lib/finance';
 import { getDiagnosisGA4Data, getWebsiteGA4Data } from '@/lib/ga4';
@@ -15,7 +15,6 @@ import { System } from '@/lib/types';
 
 // ─── Types ────────────────────────────────────────────────
 interface ContentItem  { date: string; type: string; topic: string; status: string; link?: string; }
-interface OutreachStats { sent: number; replied: number; negotiating: number; }
 interface FinanceSummary { income: string; expense: string; profit: string; }
 interface UnpaidItem { client: string; service: string; amount: number; dueDate: string; status: string; overdue: boolean; }
 interface UnpaidSummary { count: number; totalAmount: number; overdueCount: number; items: UnpaidItem[]; }
@@ -83,13 +82,10 @@ function parseContentCalendar(md: string): ContentItem[] {
   });
 }
 
-function parseOutreachLog(md: string): OutreachStats {
-  return {
-    sent:        Number(md.match(/累計寄出：(\d+)/)?.[1] ?? 0),
-    replied:     Number(md.match(/已回覆：(\d+)/)?.[1]   ?? 0),
-    negotiating: Number(md.match(/進入洽談：(\d+)/)?.[1] ?? 0),
-  };
-}
+// parseOutreachLog / OutreachStats / 外展 KpiCard 已於 2026-08-17 移除：
+// 唯一資料源 business/outreach-log.md 早在 2026-05-27 廢棄（SoT 遷至 Google Sheets
+// 「發信日誌」分頁），此後儀表板顯示的是一份凍結在 2026-04-16 的全 0 快照。
+// 外展活動同日裁決正式凍結 → 摘除而非續接。SYS-06 健康度仍見 #systems 區塊。
 
 // monthly-report.md 由舊到新排列（2026-04 在最前），首匹配會抓到最舊月（L452 根因 2）。
 // 取目標月 `## YYYY-MM` 區塊；不存在（當月尚未結帳）→ 取最後（最新）月份區塊。
@@ -393,7 +389,6 @@ export default async function Home() {
   let tasksMd = '';
   let dailyChecklistMd = '';
   let contentItems: ContentItem[]    = [];
-  let outreachStats: OutreachStats   | null = null;
   let financeSummary: FinanceSummary | null = null;
   let ga4Row: GA4WeekRow             | null = null;
   let followerHistory: FollowerPoint[]      = [];
@@ -483,7 +478,7 @@ export default async function Home() {
   };
 
   const [
-    calMd, outreachMd, financeMd, ga4Md,
+    calMd, financeMd, ga4Md,
     ga4Live, websiteGA4,
     followerHistRaw, socialMetricsRaw,
     lineFollowers, kitSubscribers, bookingStats,
@@ -496,7 +491,6 @@ export default async function Home() {
     expenseLedgerRaw,
   ] = await Promise.all([
     safe(getContentCalendar()),
-    safe(getOutreachLog()),
     safe(getFinanceReport()),
     safe(getGA4Log()),
     safe(getDiagnosisGA4Data()),
@@ -518,7 +512,6 @@ export default async function Home() {
   if (knowledgeResult) knowledgeFolders = knowledgeResult;
 
   contentItems   = calMd      ? parseContentCalendar(calMd)   : [];
-  outreachStats  = outreachMd ? parseOutreachLog(outreachMd)  : null;
   // API 優先（即時 ledger 數字），fallback 到 monthly-report.md 解析
   financeSummary = apiFinanceSummary ?? (financeMd ? parseFinanceReport(financeMd, currentYm) : null);
   ga4Row         = ga4Md      ? parseGA4Log(ga4Md)            : null;
@@ -572,9 +565,6 @@ export default async function Home() {
   if (threadsFollowers && (followerHistory.length === 0 || (followerHistory as FollowerPoint[])[followerHistory.length - 1].followers !== threadsFollowers)) {
     followerSparkData.push(threadsFollowers as number);
   }
-
-  const _os = outreachStats;
-  const outreachReplyRate = !_os ? '—' : _os.sent > 0 ? `${Math.round((_os.replied / _os.sent) * 100)}%` : '—';
 
   // ─── Render ───────────────────────────────────────────
   return (
@@ -704,20 +694,6 @@ export default async function Home() {
               { label: '本週新預約', value: '—', note: '設定 BOOKING_STATS_URL 啟用' },
             ]}
           />
-
-          {/* 外展 — also anchors #outreach */}
-          <div id="outreach">
-            <KpiCard icon="📤" title="外展" accentColor="#eab308"
-              health={systems.find(s => s.id === 'SYS-06')?.health_score}
-              rows={outreachStats ? [
-                { label: '累計發信', value: String(outreachStats.sent),        unit: '封' },
-                { label: '回覆率',   value: outreachReplyRate },
-                { label: '洽談中',   value: String(outreachStats.negotiating), unit: '組' },
-              ] : [
-                { label: '累計發信', value: '—' },
-              ]}
-            />
-          </div>
 
         </div>
 

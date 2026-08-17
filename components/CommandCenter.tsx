@@ -146,7 +146,7 @@ export function CommandCenter() {
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !loading) execute(input);
             }}
-            placeholder="輸入自訂指令，例如：分析外展進度"
+            placeholder="輸入自訂指令，例如：分析本週任務優先序"
             disabled={loading}
             className="flex-1 text-sm px-3 py-2 rounded-lg outline-none cmd-input"
             style={{
