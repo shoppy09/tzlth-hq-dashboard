@@ -33,7 +33,11 @@
 
 ### 收尾七件事（每次對話結束前必做，2026-07-02 指針化 RCF-120）
 收尾完整規則詳見**總部 CLAUDE.md →「核心原則零：收尾七件事」**（7 步驟：git push / 最近修改記錄 / tasks.md / inventory.json / daily-log / reflection-log / 品質自查 HARD STOP / 未完成清單 HARD STOP）。
-**本 repo 部署特例（步驟 0）**：程式碼修改＝`npm run build` → git push → `npx vercel --prod` 三步缺一不可；純文件修改 push 即可。
+**本 repo 部署特例（步驟 0）**：程式碼修改＝`npm run build` → git push → `npx vercel --prod`。
+> 🔴 **2026-08-23 dashboard 實查更正：本 repo 的 Vercel Git auto-deploy 是「開啟」的**（Deployments 列表證每個 commit 皆有 git-source 部署，含**純 docs commit `bf914e5`**）⇒ **`git push` 即觸發部署上線**，`npx vercel --prod` 為加速/備援。原記「三步缺一不可」的第三步不再是唯一途徑。
+> ⛔ **但 `npm run build` 仍為 HARD STOP、更不能跳過**：本 repo 是 Next.js，build 失敗時 Vercel **靜默保留舊版**只寄信通知（2026-04-29 事故原型）⇒ 不 build 就 push，會以為上線了其實沒有。
+> 總部主檔規則零原載「Vercel GitHub 自動部署永久停用（2026-04-29）」為錯誤通則（該日處置只針對看板一個專案，IMP-088），已於 2026-08-23 改寫為逐 repo 記載（RCF-153）。
+> ⚠️ 本機 Vercel 憑證已於 2026-08-15～08-22 間消失，`npx vercel --prod` 回 `No existing credentials found`，待 Tim `vercel login`；本 repo 因 auto-deploy 開啟不受影響。
 **步驟 1 提醒**：「更新本文件最近修改記錄」= 更新本 CLAUDE.md 的「最近修改記錄」表格。
 
 > 未完成收尾七件事 = 任務未完成。未 push + deploy = 儀表板看不到。
