@@ -111,7 +111,9 @@ export function TimActions({ actions: initial }: { actions: TimAction[] }) {
         <div className="space-y-0">
           {sorted.map((action) => {
             const isChecked = mounted ? !!checked[action.id] : false;
-            const todayStr = new Date().toISOString().slice(0, 10);
+            // [2026-08-30 修正 tasks L781 同族] toISOString() = UTC 日，台灣 00:00-07:59
+            // 期間會少一天 → 當天到期項目不標逾期。改用本地日。
+            const todayStr = new Date().toLocaleDateString('sv');
             const isOverdue = action.due ? action.due < todayStr : false;
             return (
               <label

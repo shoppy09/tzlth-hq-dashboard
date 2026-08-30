@@ -418,16 +418,31 @@ export default async function Home() {
   // ── Optional fetches ─────────────────────────────────
   const safe = <T,>(p: Promise<T>): Promise<T | null> => p.catch(() => null);
 
+  // [2026-08-30 修正 tasks L781] 原用 new Date().toISOString() 取「UTC 今天」查詢，但
+  // LINE insight 以 JST 計日、且計算約需一天（status: "unready" 時 followers/targetedReaches
+  // 兩欄直接缺席）→ 永遠取不到值 → 靜默 fallback 到 metrics.json 手動值（live 實證：卡片顯示
+  // 「手動 121」）。改為 JST 昨天，unready 再退一天（JST 午夜後計算可能尚未完成）。
+  // 對照組：.github/workflows/line-richmenu-check.yml（A-38）用 TZ=Asia/Tokyo date -d 'yesterday' 成功。
   const fetchLine = async (): Promise<number | null> => {
     const t = process.env.LINE_CHANNEL_ACCESS_TOKEN;
     if (!t) return null;
-    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const r = await fetch(`https://api.line.biz/v2/bot/insight/followers?date=${today}`, {
-      headers: { Authorization: `Bearer ${t}` }, next: { revalidate: 3600 },
-    } as RequestInit);
-    if (!r.ok) return null;
-    const d = await r.json();
-    return (d.followers ?? d.targetedReaches ?? null) as number | null;
+    const jstDay = (daysAgo: number) =>
+      new Date(Date.now() - daysAgo * 86400000)
+        .toLocaleDateString('sv', { timeZone: 'Asia/Tokyo' })
+        .replace(/-/g, '');
+    for (const daysAgo of [1, 2]) {
+      const r = await fetch(`https://api.line.biz/v2/bot/insight/followers?date=${jstDay(daysAgo)}`, {
+        headers: { Authorization: `Bearer ${t}` }, next: { revalidate: 3600 },
+      } as RequestInit);
+      if (!r.ok) continue;
+      const d = await r.json();
+      // 口徑：targetedReaches（可觸及人數）＝ social/metrics.json 與 OA Manager「好友」同口徑。
+      // followers 為累計「首次加好友」數、不因封鎖或刪帳號而減少（官方定義），與「LINE 好友」
+      // 標籤語意不符 → 僅作 fallback。
+      const n = (d.targetedReaches ?? d.followers ?? null) as number | null;
+      if (n != null) return n;
+    }
+    return null;
   };
 
   const fetchKit = async (): Promise<number | null> => {
@@ -732,8 +747,11 @@ export default async function Home() {
           <SectionLabel>FINANCE</SectionLabel>
           {/* ── 月報提醒（每月 25 日起顯示）*/}
           {(() => {
-            const day = new Date().getDate();
-            const month = new Date().getMonth() + 1;
+            // [2026-08-30 修正 tasks L781 同族] 裸 getDate()/getMonth() 在 Vercel（UTC）
+            // 取到 UTC 日 → 台灣 08:00 前差一天。同 layout.tsx L29-32 idiom。
+            const tw = new Date(Date.now() + 8 * 60 * 60 * 1000);
+            const day = tw.getUTCDate();
+            const month = tw.getUTCMonth() + 1;
             if (day < 25) return null;
             const isExact = day === 25;
             return (

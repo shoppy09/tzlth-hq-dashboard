@@ -40,7 +40,9 @@ function parseDailyChecklist(md: string): ChecklistItem[] {
 }
 
 export function DailyChecklist({ md }: { md: string }) {
-  const today = new Date().toISOString().slice(0, 10);
+  // [2026-08-30 修正 tasks L781 同族] toISOString() = UTC 日 → 台灣 08:00 當下 key 會跳日，
+  // 使當天已勾選項目在早上 8 點整批消失。改用本地日（瀏覽器時區＝台灣）。
+  const today = new Date().toLocaleDateString('sv');
   const storageKey = `daily-checklist-${today}`;
   const items = parseDailyChecklist(md);
 
