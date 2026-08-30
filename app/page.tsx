@@ -431,7 +431,11 @@ export default async function Home() {
         .toLocaleDateString('sv', { timeZone: 'Asia/Tokyo' })
         .replace(/-/g, '');
     for (const daysAgo of [1, 2]) {
-      const r = await fetch(`https://api.line.biz/v2/bot/insight/followers?date=${jstDay(daysAgo)}`, {
+      // ⚠️ host 必須是 api.line.me。原碼寫 api.line.biz ＝ DNS ENOTFOUND（2026-08-30 runtime
+      // 實證 getaddrinfo ENOTFOUND，對照 api.convertkit.com 200）⇒ 這才是「自動」路徑從未生效的
+      // 主因，UTC 日期是第二層。同一組雙 bug 已於 2026-07-06 在 scripts/update-social-metrics.py
+      // 修過（見該檔 L87-88 註解），本支當時漏修、潛伏 55 天。
+      const r = await fetch(`https://api.line.me/v2/bot/insight/followers?date=${jstDay(daysAgo)}`, {
         headers: { Authorization: `Bearer ${t}` }, next: { revalidate: 3600 },
       } as RequestInit);
       if (!r.ok) continue;
