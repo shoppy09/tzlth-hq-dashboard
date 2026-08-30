@@ -27,7 +27,22 @@ export async function GET() {
         message: body?.message ?? null,
       };
     } catch (e) {
-      out[`d${d}`] = { date, thrown: String(e).slice(0, 120) };
+      const err = e as { message?: string; cause?: { message?: string; code?: string; errno?: number } };
+      out[`d${d}`] = {
+        date, thrown: String(err?.message).slice(0, 120),
+        causeMsg: String(err?.cause?.message ?? '').slice(0, 200),
+        causeCode: err?.cause?.code ?? null,
+      };
+    }
+  }
+  // 對照探針：確認是「LINE 這個 host 不通」還是「整體 outbound 不通」
+  for (const [k, u] of [['probeLine', 'https://api.line.biz/'], ['probeKit', 'https://api.convertkit.com/']]) {
+    try {
+      const r = await fetch(u, { cache: 'no-store' });
+      out[k] = { http: r.status };
+    } catch (e) {
+      const err = e as { message?: string; cause?: { message?: string; code?: string } };
+      out[k] = { thrown: String(err?.message).slice(0, 80), causeMsg: String(err?.cause?.message ?? '').slice(0, 160), causeCode: err?.cause?.code ?? null };
     }
   }
   return Response.json(out);
