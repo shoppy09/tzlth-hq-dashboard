@@ -652,7 +652,7 @@ export default async function Home() {
               </a>
             ))}
             <a
-              href="https://booking.careerssl.com/admin"
+              href="https://site--my-booking-system--mvjqcpd48vdc.code.run/admin"
               target="_blank"
               rel="noopener noreferrer"
               className="link-pill text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1"
