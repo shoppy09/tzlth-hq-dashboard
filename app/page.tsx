@@ -4,7 +4,6 @@ import type { FinanceEntry, FinanceData, MonthlyTotals, LedgerFile } from '@/lib
 import { getDiagnosisGA4Data, getWebsiteGA4Data } from '@/lib/ga4';
 import { parseTasks } from '@/lib/parse-tasks';
 import { SystemCard } from '@/components/SystemCard';
-import { CommandCenter } from '@/components/CommandCenter';
 import { DailyChecklist } from '@/components/DailyChecklist';
 import { TimActions } from '@/components/TimActions';
 import { TaskTabView } from '@/components/TaskTabView';
@@ -788,10 +787,9 @@ export default async function Home() {
 
       </section>
 
-      {/* ── 指令中心 */}
-      <section id="command">
-        <CommandCenter />
-      </section>
+      {/* 指令中心已於 2026-09-09 移除（tzlth-hq 批次:B5／RCF-123 補記四）：
+          總部定位＝資訊集合體，各資料卡本身即為交付物；自由問答需求改由 LINE Bot
+          「隨身總部包 B」承接（RCF-139 補記二），位置比儀表板好。 */}
 
       {/* ── 任務追蹤（Tab 視圖）*/}
       <section id="tasks">

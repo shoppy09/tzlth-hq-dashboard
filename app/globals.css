@@ -50,30 +50,4 @@ body {
   color: var(--accent) !important;
 }
 
-/* Command center */
-.cmd-input::placeholder { color: #3d4f6e; }
-.cmd-input:focus { border-color: var(--accent) !important; }
-
-.cmd-output .cmd-h2 {
-  display: block;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--accent);
-  margin-top: 0.75rem;
-  margin-bottom: 0.25rem;
-  letter-spacing: 0.02em;
-}
-
-.cmd-output .cmd-h3 {
-  display: block;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #64748b;
-  margin-top: 0.5rem;
-  margin-bottom: 0.2rem;
-}
-
-.cmd-output strong {
-  color: #e2e8f0;
-  font-weight: 700;
-}
+/* Command center 樣式已於 2026-09-09 隨元件移除（.cmd-* 全 repo 僅 CommandCenter.tsx 使用）*/

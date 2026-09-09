@@ -8,9 +8,11 @@ export const metadata: Metadata = {
   description: 'TZLTH-HQ 指揮中心',
 };
 
-const navItems = [
+// highlight?: 手機版 nav 的強調樣式（⚡ 前綴＋實心底色）。2026-09-09 起無項目使用
+//（唯一使用者「指令」已隨指令中心移除），型別顯式保留以維持能力，非死碼遺留。
+const navItems: { label: string; href: string; highlight?: boolean }[] = [
   { label: '總覽',  href: '#overview' },
-  { label: '指令',  href: '#command',     highlight: true },
+  // 「指令」nav 項已於 2026-09-09 隨 #command 區塊一併移除（不刪＝死錨點，同 2026-08-17 外展前例 RCF-151）
   { label: '任務',  href: '#tasks' },
   { label: '內容',  href: '#content' },
   { label: '排程文章', href: '#scheduled-articles' },

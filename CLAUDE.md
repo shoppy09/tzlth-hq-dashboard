@@ -12,13 +12,13 @@
 - Framework：Next.js + TypeScript
 - 部署：Vercel（hq-dashboard-alpha.vercel.app）
 - 資料來源：讀取本機 tzlth-hq/ 各 Markdown 檔案 + GA4 API + Threads API
-- 指令中心：Google Gemini 2.5 Flash（GOOGLE_API_KEY；2026-06-01 自 2.0-flash 遷移——2.0 已停用；⚠️ 2.5-flash 2026-10-16 退場，遷移追蹤 tzlth-hq RCF-123 / tasks L322）
+- ⛔ **指令中心已於 2026-09-09 移除**（Tim 裁決：總部定位＝資訊集合體，不是問答介面）：本 repo 自此**無任何 LLM 依賴**，`@google/genai` 已 uninstall，儀表板隨之退出 tzlth-hq `批次:B5` 的 2026-10-16 Gemini 遷移母體。決策全文＝RCF-123 補記四；自由問答需求改由 LINE Bot「隨身總部包 B」承接（RCF-139 補記二）。
 
 ## Vercel 環境變數清單
 | 變數名稱 | 用途 | 最後更新 |
 |---------|------|---------|
 | GITHUB_TOKEN | 讀取 GitHub 私有 repo | 2026-04-11 |
-| GOOGLE_API_KEY | Gemini 指令中心 | 2026-04-13 |
+| ~~GOOGLE_API_KEY~~ | ⛔ 2026-09-09 起**零程式消費者**（指令中心移除）。**刻意暫留 env var 不刪**：程式碼可 `git revert` 回退，金鑰刪了要重新申請 ⇒ 留著換回退零阻力。建議 2026-10-16 後或下次季度盤點再由 Tim 於 Vercel 刪除 | 2026-09-09 |
 | KIT_API_KEY | Kit 訂閱者數 | 2026-04-12 |
 | LINE_CHANNEL_ACCESS_TOKEN | LINE 粉絲數 | 2026-04-12 |
 | GOOGLE_ANALYTICS_PROPERTY_ID | GA4 診斷系統 Property ID（532491434）| 2026-04-12 |
@@ -46,6 +46,7 @@
 
 | 日期 | 修改內容 | 執行視窗 | 狀態 |
 |------|---------|---------|------|
+| 2026-09-09 | ⛔ **指令中心移除（Tim 裁決，5 輪 rigor gate）**：刪 `app/api/command/`（107 行）＋`components/CommandCenter.tsx`（205 行），`page.tsx`／`layout.tsx`／`globals.css` 三處各留一行「為何刪」，`npm uninstall @google/genai`。**理由不是它壞了，是需求不存在**——總部定位＝資訊集合體，各資料卡本身即交付物；自由問答它做得比 Claude Code 弱、比 LINE Bot 遠（後者正在建「隨身總部包 B」）。🔴 **`npm run build` 抓到 5 輪掃描沒抓到的東西**：`highlight` 是**只有被刪那個 nav 項在用**的可選屬性 ⇒ 刪掉後 TS 推斷型別不含它，`layout.tsx:84-90` 四處 `item.highlight` 全部編譯失敗。⇒ 靜態掃描找得到「誰引用了 X」，找不到「X 消失後型別會塌」——**這正是 build 為 HARD STOP 的理由**。修法取顯式型別註記（保留 nav 強調能力）而非刪渲染邏輯，爆炸半徑最小。驗收：build ✅ 路由表**無** `/api/command`、`ƒ Proxy (Middleware)` 仍在（Basic Auth 未破）、7/7 static。⚠️ `GOOGLE_API_KEY` **刻意暫留**（見上表）。 | 總部視窗 | ✅ |
 | 2026-08-30 | 🔴 **LINE 卡「自動」路徑首次生效——真根因是主機名不是日期**（HQ tasks L781）：原碼 host 寫 `api.line.biz`，runtime 實測 `getaddrinfo ENOTFOUND`（同 runtime 打 `api.convertkit.com` 回 200 ⇒ 非 outbound 問題）；LINE Messaging API 官方 host 為 **`api.line.me`**。⚠️ 同組雙 bug（host＋Insight T-1 日期）**2026-07-06 已在 tzlth-hq `scripts/update-social-metrics.py` 修過**，本支漏修、潛伏 55 天（期間靜默 fallback 到 metrics.json，只有一個「手動」小字為證）。**三層全修**：① host ② 日期改 JST-1、unready 退 JST-2 ③ **口徑定案 targetedReaches**（＝OA Manager「好友」；followers 含已封鎖者對外虛高）。同族順修 3 處 UTC-當本地日：`page.tsx` 月報提醒（裸 getDate/getMonth 在 Vercel=UTC）／`DailyChecklist` storageKey（台灣 08:00 跳日致已勾選項消失）／`TimActions` 逾期判定。**已驗證本就正確、未動**：`layout.tsx` L29-32、`page.tsx` L455、`lib/github.ts` L181、`FinanceInput.todayTaipei()`、`FinancePanel.currentTaipeiMonth()`。live 驗證：卡片「手動 124」→「**自動 124**」。臨時診斷端點用畢已刪。`npm run build` 通過（8/8）＋auto-deploy。 | 開發部 | ✅ |
 | 2026-07-07 | L444 近 6 月收支趨勢 mini 圖（Tim「執行」，A+D+口徑統一）：lib/finance.ts +buildLedgerTrend（ledger 實收制 status='received'，與 SYS-09 /reports、月底結帳月報三方一致；external-revenue 不併入防口徑漂移）+ FinanceTrend.tsx（收/支 bar+淨利，含「完整月報 ↗」連結）+ github.ts getExpenseLedger + FinancePanel/page.tsx 接線。df16d4b build✅→push→vercel Ready；Tim 登入態實測 6 月數字逐月核對全中；另揪既有 bug：本月財務卡顯示 4 月舊數（summary API fallback），記 tzlth-hq tasks P3 | 總部視窗 | ✅ |
 | 2026-07-07 | 客戶穿透視圖 /clients v0 上線（B-b 啟動，RCF-125，Tim「執行」）：lib/crm.ts（依 tzlth-hq strategy/customer-360-spec.md 資料契約 parse client-log + income ledger join；營收一律 ledger 即時計算；PII 資料層阻斷只萃取 🟢 欄）+ app/clients/page.tsx（列表/回訪標記/timeline）+ layout nav +客戶 + github.ts 兩 fetcher。be48f4b build✅→push→`npx vercel --prod` Ready；實測 21 客戶/回訪 1/NT$5,550/零 PII/curl 401；deploy-verify SYS-07-2026-07-07 | 總部視窗 | ✅ |
