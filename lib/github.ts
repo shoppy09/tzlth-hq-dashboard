@@ -49,9 +49,9 @@ export async function getDailyRevenue(ym: string): Promise<string | null> {
 // 2026-08-14 移除 getRecentDailyRevenues（趨勢圖預留 API，全史零呼叫）：
 // 近 6 月趨勢已由 lib/finance.ts buildLedgerTrend（ledger 實收制口徑）實現於 page.tsx，預留永久落空。
 
-export async function getGA4Log() {
-  return fetchFile('product/ga4-weekly-log.md');
-}
+// 2026-09-09 移除 getGA4Log（讀 product/ga4-weekly-log.md 的診斷欄）：
+// AI 履歷診斷 technical retirement 完成，其唯一消費者診斷 KpiCard 已一併拆除。
+// 比照 2026-08-17 getOutreachLog / 2026-08-14 getSocialLog 前例，留碑不留碼。
 
 // 2026-08-14 移除 getSocialLog（讀 social/weekly-log.md，該檔 2026-07-06 廢止、批次 1B ④）：
 // 社群 KPI 單一來源＝social/metrics.json，已由下方 getSocialMetrics 供應；本函式零呼叫者。

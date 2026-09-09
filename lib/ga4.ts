@@ -23,14 +23,6 @@ function safeParseCredentials(credJson: string) {
   }
 }
 
-export interface DiagnosisGA4Data {
-  diagnoseStarted: number;
-  diagnoseCompleted: number;
-  upsellClicked: number;
-  completeRate: string;   // "診斷完成 / 診斷開始" 百分比
-  convRate: string;       // "升級點擊 / 診斷完成" 百分比
-  period: string;         // e.g. "過去 7 天"
-}
 
 export interface WebsiteGA4Data {
   sessions: number;
@@ -86,88 +78,9 @@ export async function getWebsiteGA4Data(): Promise<WebsiteGA4Data | null> {
   }
 }
 
-export async function getDiagnosisGA4Data(): Promise<DiagnosisGA4Data | null> {
-  const propertyId = process.env.GOOGLE_ANALYTICS_PROPERTY_ID;
-  const credJson   = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-
-  if (!propertyId || !credJson) return null;
-
-  try {
-    const credentials = safeParseCredentials(credJson);
-
-    const auth = new GoogleAuth({
-      credentials,
-      scopes: ['https://www.googleapis.com/auth/analytics.readonly'],
-    });
-
-    const client = await auth.getClient();
-    const tokenResponse = await client.getAccessToken();
-    const token = tokenResponse.token;
-    if (!token) return null;
-
-    const res = await fetch(
-      `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          dateRanges: [{ startDate: '7daysAgo', endDate: 'today' }],
-          metrics: [{ name: 'eventCount' }],
-          dimensions: [{ name: 'eventName' }],
-          dimensionFilter: {
-            filter: {
-              fieldName: 'eventName',
-              inListFilter: {
-                values: ['diagnose_started', 'diagnose_completed', 'upsell_clicked'],
-              },
-            },
-          },
-        }),
-        next: { revalidate: 3600 }, // 每小時更新
-      }
-    );
-
-    if (!res.ok) {
-      const errText = await res.text().catch(() => '');
-      console.error(`[GA4 diagnosis] HTTP ${res.status}: ${errText.slice(0, 300)}`);
-      return null;
-    }
-
-    const data = await res.json();
-    const rows: Array<{ dimensionValues: Array<{ value: string }>; metricValues: Array<{ value: string }> }> =
-      data.rows ?? [];
-
-    const eventMap: Record<string, number> = {};
-    for (const row of rows) {
-      const name  = row.dimensionValues?.[0]?.value ?? '';
-      const count = parseInt(row.metricValues?.[0]?.value ?? '0', 10);
-      eventMap[name] = count;
-    }
-
-    const started   = eventMap['diagnose_started']   ?? 0;
-    const completed = eventMap['diagnose_completed']  ?? 0;
-    const upsell    = eventMap['upsell_clicked']      ?? 0;
-
-    const completeRate = started > 0
-      ? `${Math.round((completed / started) * 100)}%`
-      : '—';
-    const convRate = completed > 0
-      ? `${Math.round((upsell / completed) * 100)}%`
-      : '—';
-
-    return {
-      diagnoseStarted: started,
-      diagnoseCompleted: completed,
-      upsellClicked: upsell,
-      completeRate,
-      convRate,
-      period: '過去 7 天',
-    };
-  } catch (e) {
-    console.error('[GA4 diagnosis] exception:', e);
-    return null;
-  }
-}
+// 2026-09-09 移除 getDiagnosisGA4Data（打診斷 GA4 property 532491434）：
+// AI 履歷診斷 technical retirement 完成，唯一消費者診斷 KpiCard 已拆除。
+// 比照 lib/github.ts 既有慣例，留碑不留碼；歷史資料仍在 GA4 property 內。
+// 同批移除其專屬型別 DiagnosisGA4Data。
+// 不可刪 GOOGLE_ANALYTICS_PROPERTY_ID 這個 env：getWebsiteGA4Data 仍以它為
+// WEBSITE_GA4_PROPERTY_ID 的 fallback。

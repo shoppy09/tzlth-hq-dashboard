@@ -1,7 +1,7 @@
-import { getInventory, getTasksMd, getContentCalendar, getFinanceReport, getGA4Log, getFollowerHistory, getSocialMetrics, getDailyChecklist, getKnowledgeBase, getDailyRevenue, getExternalRevenue, getTimActions, getScheduledArticles, getIncomeLedger, getExpenseLedger, KnowledgeFolder } from '@/lib/github';
+import { getInventory, getTasksMd, getContentCalendar, getFinanceReport, getFollowerHistory, getSocialMetrics, getDailyChecklist, getKnowledgeBase, getDailyRevenue, getExternalRevenue, getTimActions, getScheduledArticles, getIncomeLedger, getExpenseLedger, KnowledgeFolder } from '@/lib/github';
 import { buildLedgerTrend } from '@/lib/finance';
 import type { FinanceEntry, FinanceData, MonthlyTotals, LedgerFile } from '@/lib/finance';
-import { getDiagnosisGA4Data, getWebsiteGA4Data } from '@/lib/ga4';
+import { getWebsiteGA4Data } from '@/lib/ga4';
 import { parseTasks } from '@/lib/parse-tasks';
 import { SystemCard } from '@/components/SystemCard';
 import { DailyChecklist } from '@/components/DailyChecklist';
@@ -30,7 +30,7 @@ interface ViewTotals {
   payment: { count: number; revenue: number };
   created: { count: number; confirmed: number };
 }
-interface GA4WeekRow { week: string; diagnoseStart: string; diagnoseComplete: string; completeRate: string; upsellClick: string; convRate: string; }
+// interface GA4WeekRow 已於 2026-09-09 移除：唯一消費者為診斷 KpiCard，隨診斷退場一併拆除
 interface FollowerPoint { date: string; followers: number; }
 interface BookingStats { total: number; thisWeek: number; thisMonth: number; }
 interface SocialMetrics {
@@ -180,20 +180,8 @@ function computeViewTotals(records: DailyRecord[]): ViewTotals {
   };
 }
 
-function parseGA4Log(md: string): GA4WeekRow | null {
-  const rows: GA4WeekRow[] = [];
-  let inTable = false;
-  for (const line of md.split('\n')) {
-    if (line.includes('| 週次 |')) { inTable = true; continue; }
-    if (inTable && line.startsWith('|---')) continue;
-    if (inTable && line.startsWith('|')) {
-      const cols = line.split('|').map(s => s.trim()).filter(Boolean);
-      if (cols.length >= 6 && cols[0] !== '週次')
-        rows.push({ week: cols[0], diagnoseStart: cols[1], diagnoseComplete: cols[2], completeRate: cols[3], upsellClick: cols[4], convRate: cols[5] });
-    } else if (inTable && !line.startsWith('|')) { inTable = false; }
-  }
-  return rows.length > 0 ? rows[rows.length - 1] : null;
-}
+// function parseGA4Log 已於 2026-09-09 移除：解析 product/ga4-weekly-log.md 的診斷欄，
+// 隨診斷 technical retirement 一併拆除（tzlth-hq 批次:B5／roadmap-diagnosis.md §二）。
 
 // ─── Colour helpers ───────────────────────────────────────
 function priorityColor(p: string) {
@@ -389,7 +377,6 @@ export default async function Home() {
   let dailyChecklistMd = '';
   let contentItems: ContentItem[]    = [];
   let financeSummary: FinanceSummary | null = null;
-  let ga4Row: GA4WeekRow             | null = null;
   let followerHistory: FollowerPoint[]      = [];
   let knowledgeFolders: KnowledgeFolder[]   = [];
   let externalRevenueEntries: FinanceEntry[] = [];
@@ -496,8 +483,8 @@ export default async function Home() {
   };
 
   const [
-    calMd, financeMd, ga4Md,
-    ga4Live, websiteGA4,
+    calMd, financeMd,
+    websiteGA4,
     followerHistRaw, socialMetricsRaw,
     lineFollowers, kitSubscribers, bookingStats,
     knowledgeResult,
@@ -510,8 +497,6 @@ export default async function Home() {
   ] = await Promise.all([
     safe(getContentCalendar()),
     safe(getFinanceReport()),
-    safe(getGA4Log()),
-    safe(getDiagnosisGA4Data()),
     safe(getWebsiteGA4Data()),
     safe(getFollowerHistory()),
     safe(getSocialMetrics()),
@@ -532,7 +517,6 @@ export default async function Home() {
   contentItems   = calMd      ? parseContentCalendar(calMd)   : [];
   // API 優先（即時 ledger 數字），fallback 到 monthly-report.md 解析
   financeSummary = apiFinanceSummary ?? (financeMd ? parseFinanceReport(financeMd, currentYm) : null);
-  ga4Row         = ga4Md      ? parseGA4Log(ga4Md)            : null;
 
   // RCF-009 Phase 4:未收款 + 自動對賬資料
   const unpaidSummary: UnpaidSummary | null = financeMd ? parseUnpaidTracking(financeMd, currentYm) : null;
@@ -571,9 +555,13 @@ export default async function Home() {
   const tasks       = parseTasks(tasksMd);
   const p1Tasks     = tasks.filter(t => t.priority === 'P1' || t.priority === 'P0');
   const p2Tasks     = tasks.filter(t => t.priority === 'P2');
-  const avgHealth   = systems.length
-    ? (systems.reduce((s, sys) => s + sys.health_score, 0) / systems.length).toFixed(1) : '0';
-  const alertSystems = systems.filter(s => s.health_score <= 3);
+  // 2026-09-09：退場系統不計入健康度、警示與總數（診斷為首例）。
+  // health_score 保留退場當下的數值（歷史事實），以 status 篩選而非把值抹成 null
+  // ——lib/types.ts 的 health_score 為 number 非 number|null，改型別會連累 SystemCard。
+  const activeSystems = systems.filter(s => s.status !== 'retired');
+  const avgHealth   = activeSystems.length
+    ? (activeSystems.reduce((s, sys) => s + sys.health_score, 0) / activeSystems.length).toFixed(1) : '0';
+  const alertSystems = activeSystems.filter(s => s.health_score <= 3);
   const quickLinks   = systems.filter(s => s.url && (s.status === 'live' || s.status === 'active') && s.id !== 'SYS-07' && s.id !== 'SYS-05');
   const quickLinkLabel: Record<string, string> = { 'SYS-02': 'Threads分析' };
 
@@ -609,7 +597,7 @@ export default async function Home() {
       <section id="overview">
         <div className="grid grid-cols-3 gap-3 mb-4">
           {[
-            { label: '系統總數', value: String(systems.length), icon: '🖥',  accent: '#4f8ef7' },
+            { label: '系統總數', value: String(activeSystems.length), icon: '🖥',  accent: '#4f8ef7' },
             { label: '平均健康', value: avgHealth + '/5',       icon: '❤️', accent: '#22c55e' },
             { label: 'P1 任務', value: String(p1Tasks.length), icon: '⚡',  accent: p1Tasks.length > 0 ? '#f97316' : '#22c55e' },
           ].map(stat => (
@@ -688,19 +676,11 @@ export default async function Home() {
             ]}
           />
 
-          <KpiCard icon="🔬" title="診斷" accentColor="#a78bfa"
-            health={systems.find(s => s.id === 'SYS-03')?.health_score}
-            rows={ga4Live ? [
-              { label: '診斷開始', value: String(ga4Live.diagnoseStarted), unit: '次', note: '自動' },
-              { label: '完成率',   value: ga4Live.completeRate },
-              { label: 'Upsell 率', value: ga4Live.convRate },
-            ] : ga4Row ? [
-              { label: '完成率',   value: ga4Row.completeRate, note: '手動' },
-              { label: 'Upsell 率', value: ga4Row.convRate },
-            ] : [
-              { label: '完成率', value: '—', note: '設定 GA4 啟用' },
-            ]}
-          />
+          {/* 診斷 KpiCard 已於 2026-09-09 移除：AI 履歷診斷 technical retirement 完成
+              （diagnose.careerssl.com 兩域已 308 轉址）。同批拆掉其整條資料鏈：
+              getGA4Log / getDiagnosisGA4Data / GA4WeekRow / parseGA4Log / ga4Md / ga4Live / ga4Row
+              ——grep 實證這七者除本卡外零消費者，只刪卡會留下一串 unused 而 build 失敗。
+              詳 tzlth-hq 批次:B5 ／ product/roadmap-diagnosis.md §二 */}
 
           <KpiCard icon="📅" title="預約" accentColor="#f97316"
             health={systems.find(s => s.id === 'SYS-04')?.health_score}
