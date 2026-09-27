@@ -1,9 +1,11 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { FinanceInput } from '@/components/FinanceInput';
 import { FinanceTrend } from '@/components/FinanceTrend';
-import { computeMonthlyTotals, groupByMonth } from '@/lib/finance';
-import type { FinanceEntry, MonthGroup, MonthlyTotals } from '@/lib/finance';
+import type { MonthlyTotals } from '@/lib/finance';
+
+// 2026-09-28（HQ tasks L192②）：移除「新增記錄」「歷史記錄」兩個 Tab 與概覽的「手動補充」區塊。
+// 三者全部只服務 finance/external-revenue.json，而該檔建檔（2026-04-24）至今 0 筆、不進 /api/summary 與月報；
+// 系統外收入實際一直記在 ledger（課程／其他 14 筆）⇒ 這是一條「寫了也不進任何數字」的入口，留著就是漏帳陷阱。
 
 // ─── 既有介面（與 page.tsx 保持相容）───────────────────────
 interface FinanceSummary { income: string; expense: string; profit: string; }
@@ -13,7 +15,6 @@ interface ViewTotals { booking: { count: number; revenue: number }; payment: { c
 
 type ViewMode    = 'booking' | 'payment' | 'created';
 type PresentMode = 'full' | 'rounded' | 'public_safe' | 'cumulative';
-type PanelTab    = 'overview' | 'input' | 'history';
 
 const VIEW_LABEL: Record<ViewMode, string> = { booking: '預約服務日', payment: '實際收款日', created: '預約建立日' };
 const MODE_LABEL: Record<PresentMode, { icon: string; name: string }> = {
@@ -22,7 +23,6 @@ const MODE_LABEL: Record<PresentMode, { icon: string; name: string }> = {
   public_safe: { icon: '🔒', name: '公開' },
   cumulative:  { icon: '📈', name: '累計' },
 };
-const TAB_LABEL: Record<PanelTab, string> = { overview: '概覽', input: '新增記錄', history: '歷史記錄' };
 
 function toNumber(s: string): number { return Number((s || '').replace(/,/g, '')) || 0; }
 function fmt(n: number): string { return n.toLocaleString('zh-TW'); }
@@ -35,110 +35,10 @@ function applyMode(rawStr: string, mode: PresentMode): string {
   return fmt(n);
 }
 
-function currentTaipeiMonth(): string {
-  const d = new Date(Date.now() + 8 * 60 * 60 * 1000);
-  return d.toISOString().slice(0, 7);
-}
-
-// ─── Tab Bar ──────────────────────────────────────────────
-function TabBar({ tab, setTab }: { tab: PanelTab; setTab: (t: PanelTab) => void }) {
-  return (
-    <div className="flex gap-1 mb-3">
-      {(Object.keys(TAB_LABEL) as PanelTab[]).map(t => (
-        <button
-          key={t}
-          onClick={() => setTab(t)}
-          className="flex-1 text-xs py-1.5 rounded-lg font-semibold transition-colors"
-          style={{
-            backgroundColor: tab === t ? 'var(--accent)' : 'var(--bg-primary)',
-            color: tab === t ? '#fff' : 'var(--text-secondary)',
-            border: `1px solid ${tab === t ? 'var(--accent)' : 'var(--border)'}`,
-          }}
-        >
-          {TAB_LABEL[t]}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-// ─── History Tab ──────────────────────────────────────────
-function HistoryTab({ entries }: { entries: FinanceEntry[] }) {
-  const groups: MonthGroup[] = groupByMonth(entries);
-
-  if (groups.length === 0) {
-    return (
-      <div className="text-sm text-center py-6" style={{ color: 'var(--text-secondary)' }}>
-        尚無手動記錄。<br />
-        <span className="text-xs">點擊「新增記錄」填入現金收入或額外支出。</span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-2">
-      {groups.map(g => (
-        <details key={g.month} className="rounded-xl overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border)' }}>
-          <summary
-            className="flex items-center justify-between px-3 py-2.5 cursor-pointer select-none"
-            style={{ listStyle: 'none', color: 'var(--text-primary)' }}
-          >
-            <span className="text-sm font-semibold">{g.month}</span>
-            <div className="flex items-center gap-3 text-xs">
-              {g.totals.incomeCount > 0 && (
-                <span style={{ color: '#22c55e' }}>↑ NT${fmt(g.totals.income)}</span>
-              )}
-              {g.totals.expenseCount > 0 && (
-                <span style={{ color: '#ef4444' }}>↓ NT${fmt(g.totals.expense)}</span>
-              )}
-              <span style={{ color: 'var(--text-secondary)' }}>▾</span>
-            </div>
-          </summary>
-          <div style={{ borderTop: '1px solid var(--border)' }}>
-            {g.entries.map((e, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between px-3 py-2 text-xs"
-                style={{ borderBottom: i < g.entries.length - 1 ? '1px solid var(--border)' : 'none', color: 'var(--text-primary)' }}
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <span
-                    className="w-1.5 h-1.5 rounded-full shrink-0"
-                    style={{ backgroundColor: e.entry_type === 'expense' ? '#ef4444' : '#22c55e' }}
-                  />
-                  <div className="min-w-0">
-                    <div className="font-semibold truncate">{e.type}</div>
-                    <div style={{ color: 'var(--text-secondary)' }}>{e.date} · {e.payment_method}</div>
-                    {e.note && <div className="truncate" style={{ color: 'var(--text-secondary)' }}>{e.note}</div>}
-                  </div>
-                </div>
-                <span
-                  className="font-bold shrink-0 ml-2"
-                  style={{ color: e.entry_type === 'expense' ? '#ef4444' : '#22c55e' }}
-                >
-                  {e.entry_type === 'expense' ? '－' : '＋'}NT${fmt(e.amount)}
-                </span>
-              </div>
-            ))}
-            {/* 月小計 */}
-            <div className="flex items-center justify-between px-3 py-2 text-xs font-bold" style={{ backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)' }}>
-              <span>淨計</span>
-              <span style={{ color: g.totals.net >= 0 ? '#22c55e' : '#ef4444' }}>
-                NT${fmt(Math.abs(g.totals.net))} {g.totals.net >= 0 ? '（收入）' : '（支出）'}
-              </span>
-            </div>
-          </div>
-        </details>
-      ))}
-    </div>
-  );
-}
-
 // ─── Overview Tab ─────────────────────────────────────────
 function OverviewTab({
   financeSummary, unpaidSummary, viewTotals, syncedAt,
   cumulativeProfitAvailable, mode, setMode, view, setView,
-  manualIncome, manualExpense,
 }: {
   financeSummary: FinanceSummary | null;
   unpaidSummary: UnpaidSummary | null;
@@ -149,8 +49,6 @@ function OverviewTab({
   setMode: (m: PresentMode) => void;
   view: ViewMode;
   setView: (v: ViewMode) => void;
-  manualIncome: number;
-  manualExpense: number;
 }) {
   const income  = financeSummary ? applyMode(financeSummary.income, mode) : '—';
   const expense = financeSummary ? applyMode(financeSummary.expense, mode) : '—';
@@ -165,8 +63,6 @@ function OverviewTab({
     else if (view === 'payment')  { viewValue = `NT$${applyMode(String(viewTotals.payment.revenue), mode)}`; viewNote = `${viewTotals.payment.count} 筆`; }
     else                          { viewValue = `${viewTotals.created.count} 筆`; viewNote = `已確認 ${viewTotals.created.confirmed} 筆`; }
   }
-
-  const hasManual = manualIncome > 0 || manualExpense > 0;
 
   return (
     <div className="space-y-3">
@@ -207,17 +103,6 @@ function OverviewTab({
           </div>
         </div>
       </div>
-
-      {/* 手動記錄補充（有資料才顯示）*/}
-      {hasManual && (
-        <div className="rounded-lg px-3 py-2 text-xs" style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border)' }}>
-          <div className="font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>✏️ 手動補充（本月）</div>
-          <div className="flex gap-4">
-            {manualIncome  > 0 && <span style={{ color: '#22c55e' }}>↑ NT${fmt(manualIncome)}</span>}
-            {manualExpense > 0 && <span style={{ color: '#ef4444' }}>↓ NT${fmt(manualExpense)}</span>}
-          </div>
-        </div>
-      )}
 
       {/* 未收款追蹤 */}
       {unpaidShown && (
@@ -277,7 +162,6 @@ export function FinancePanel({
   viewTotals,
   syncedAt,
   cumulativeProfitAvailable,
-  initialEntries,
   trendMonths,
 }: {
   financeSummary: FinanceSummary | null;
@@ -285,15 +169,11 @@ export function FinancePanel({
   viewTotals: ViewTotals | null;
   syncedAt: string | null;
   cumulativeProfitAvailable: boolean;
-  initialEntries: FinanceEntry[];
   trendMonths?: MonthlyTotals[];
 }) {
   // ── 狀態 ─────────────────────────────────────────────
-  const [tab, setTab]       = useState<PanelTab>('overview');
   const [mode, setMode]     = useState<PresentMode>('full');
   const [view, setView]     = useState<ViewMode>('payment');
-  // entries 提升到父層：概覽與歷史共享同一份資料
-  const [entries, setEntries] = useState<FinanceEntry[]>(initialEntries);
 
   useEffect(() => {
     const savedMode = typeof window !== 'undefined' ? localStorage.getItem('finance-mode') : null;
@@ -305,53 +185,29 @@ export function FinancePanel({
   const setModeWith = (m: PresentMode) => { setMode(m); if (typeof window !== 'undefined') localStorage.setItem('finance-mode', m); };
   const setViewWith = (v: ViewMode)    => { setView(v); if (typeof window !== 'undefined') localStorage.setItem('finance-view', v); };
 
-  // ── 計算本月手動記錄合計（概覽顯示 + 歷史區間同步）──
-  const currentMonth = currentTaipeiMonth();
-  const manualTotals = computeMonthlyTotals(entries, currentMonth);
-
-  // ── 新增成功回調（B 選項：append → 兩個 tab 同步更新）─
-  const handleEntryAdded = (newEntry: FinanceEntry) => {
-    setEntries(prev => [...prev, newEntry]);
-    setTab('overview'); // 新增後自動切回概覽確認
-  };
-
   // ─── Render ──────────────────────────────────────────
   return (
     <div
       className="rounded-xl p-4"
       style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)' }}
     >
-      <TabBar tab={tab} setTab={setTab} />
+      <OverviewTab
+        financeSummary={financeSummary}
+        unpaidSummary={unpaidSummary}
+        viewTotals={viewTotals}
+        syncedAt={syncedAt}
+        cumulativeProfitAvailable={cumulativeProfitAvailable}
+        mode={mode}
+        setMode={setModeWith}
+        view={view}
+        setView={setViewWith}
+      />
 
-      {tab === 'overview' && (
-        <OverviewTab
-          financeSummary={financeSummary}
-          unpaidSummary={unpaidSummary}
-          viewTotals={viewTotals}
-          syncedAt={syncedAt}
-          cumulativeProfitAvailable={cumulativeProfitAvailable}
-          mode={mode}
-          setMode={setModeWith}
-          view={view}
-          setView={setViewWith}
-          manualIncome={manualTotals.income}
-          manualExpense={manualTotals.expense}
-        />
-      )}
-
-      {/* 近 6 月收支趨勢（L444）— 僅概覽 Tab 顯示 */}
-      {tab === 'overview' && trendMonths && trendMonths.length > 0 && (
+      {/* 近 6 月收支趨勢（L444）*/}
+      {trendMonths && trendMonths.length > 0 && (
         <div className="mt-3">
           <FinanceTrend months={trendMonths} />
         </div>
-      )}
-
-      {tab === 'input' && (
-        <FinanceInput onSuccess={handleEntryAdded} />
-      )}
-
-      {tab === 'history' && (
-        <HistoryTab entries={entries} />
       )}
     </div>
   );

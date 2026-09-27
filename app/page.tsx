@@ -1,6 +1,6 @@
-import { getInventory, getTasksMd, getContentCalendar, getFinanceReport, getFollowerHistory, getSocialMetrics, getDailyChecklist, getKnowledgeBase, getDailyRevenue, getExternalRevenue, getTimActions, getScheduledArticles, getIncomeLedger, getExpenseLedger, KnowledgeFolder } from '@/lib/github';
+import { getInventory, getTasksMd, getContentCalendar, getFinanceReport, getFollowerHistory, getSocialMetrics, getDailyChecklist, getKnowledgeBase, getDailyRevenue, getTimActions, getScheduledArticles, getIncomeLedger, getExpenseLedger, KnowledgeFolder } from '@/lib/github';
 import { buildLedgerTrend } from '@/lib/finance';
-import type { FinanceEntry, FinanceData, MonthlyTotals, LedgerFile } from '@/lib/finance';
+import type { MonthlyTotals, LedgerFile } from '@/lib/finance';
 import { getWebsiteGA4Data } from '@/lib/ga4';
 import { parseTasks } from '@/lib/parse-tasks';
 import { SystemCard } from '@/components/SystemCard';
@@ -379,7 +379,6 @@ export default async function Home() {
   let financeSummary: FinanceSummary | null = null;
   let followerHistory: FollowerPoint[]      = [];
   let knowledgeFolders: KnowledgeFolder[]   = [];
-  let externalRevenueEntries: FinanceEntry[] = [];
   let timActionsData: { id: string; title: string; detail: string; type: 'one-time' | 'weekly' | 'monthly' | 'quarterly'; due: string | null; priority: string; source_system: string; created_at: string; completed: boolean }[] = [];
 
   // ── Core (required) ──────────────────────────────────
@@ -489,7 +488,6 @@ export default async function Home() {
     lineFollowers, kitSubscribers, bookingStats,
     knowledgeResult,
     dailyRevenueRaw,
-    externalRevenueRaw,
     apiFinanceSummary,
     scheduledArticlesRaw,
     incomeLedgerRaw,
@@ -505,7 +503,6 @@ export default async function Home() {
     safe(fetchBooking()),
     safe(getKnowledgeBase()),
     safe(getDailyRevenue(currentYm)),
-    safe(getExternalRevenue()),
     safe(fetchFinanceSummaryFromApi()),
     safe(getScheduledArticles()),
     safe(getIncomeLedger()),
@@ -539,13 +536,6 @@ export default async function Home() {
       const incLed = JSON.parse(incomeLedgerRaw) as LedgerFile;
       const expLed = JSON.parse(expenseLedgerRaw) as LedgerFile;
       trendMonths = buildLedgerTrend(incLed.transactions ?? [], expLed.transactions ?? [], currentYm, 6);
-    }
-  } catch { /* ignore */ }
-  // external-revenue.json → 手動財務記錄（初始狀態由 SSR 載入，新增後由 Client state 更新）
-  try {
-    if (externalRevenueRaw) {
-      const extData = JSON.parse(externalRevenueRaw) as FinanceData;
-      externalRevenueEntries = extData.records ?? [];
     }
   } catch { /* ignore */ }
   try { if (followerHistRaw) followerHistory = JSON.parse(followerHistRaw) as FollowerPoint[]; } catch { /* ignore */ }
@@ -748,8 +738,8 @@ export default async function Home() {
                 <span className="text-xs font-semibold"
                   style={{ color: isExact ? '#f97316' : '#a16207' }}>
                   {isExact
-                    ? `月報提醒（今日 ${month}/25）：請填寫本月收入至 finance/monthly-report.md`
-                    : `月報提醒（每月 25 日）：請確認本月收入已填寫`}
+                    ? `月報提醒（今日 ${month}/25）：請執行「月底結帳」（收入＋支出＋訂閱核對）→ finance/monthly-report.md`
+                    : `月報提醒（每月 25 日）：請確認本月「月底結帳」已執行（收入＋支出＋訂閱核對）`}
                 </span>
               </div>
             );
@@ -760,7 +750,6 @@ export default async function Home() {
             viewTotals={viewTotals}
             syncedAt={syncedAt}
             cumulativeProfitAvailable={cumulativeProfitAvailable}
-            initialEntries={externalRevenueEntries}
             trendMonths={trendMonths}
           />
         </div>

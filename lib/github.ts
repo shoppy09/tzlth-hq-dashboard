@@ -75,11 +75,6 @@ export async function getSocialMetrics() {
 
 // 2026-08-14 移除 getDailyLog（reports/daily-log.md，全史零呼叫；檔案本身仍活躍，僅儀表板不消費）。
 
-// ─── Finance external revenue ─────────────────────────
-export async function getExternalRevenue(): Promise<string> {
-  // revalidate: 0 = always fresh（用戶可能剛剛新增了一筆）
-  return fetchFile('finance/external-revenue.json', REPO, 0);
-}
 
 // ─── Checklist State (cross-device sync) ─────────────────
 
@@ -289,11 +284,38 @@ export async function getClientLog(): Promise<string> {
   return fetchFile('crm/client-log.md');
 }
 
+// ─── ledger 讀取（2026-09-28 HQ tasks L716：原硬編 income-2026.json／expense-2026.json）──
+// WHY：財務系統寫入端依「寫入當年」建檔（tzlth-finance lib/github.ts getIncomePath），2027 首筆會新建
+//   income-2027.json；硬編 2026 會讓 2027 年的 6 月趨勢與客戶穿透視圖看不到新資料。
+// 讀「2026 到台北今年」全部年度檔合併：客戶穿透視圖是全期視圖，只讀近兩年會在 2028 起丟掉 income-2026.json
+//   （該檔同時承載 2024／2025 歷史 17 筆，那兩年從未獨立建檔）。每年多一次讀取，換永不丟資料。
+// 缺檔（如跨年初日尚無新檔）視為空陣列——fetchFile 對非 2xx 會 throw，故逐檔 try/catch。
+// 回傳型別維持 string（呼叫端 page.tsx／clients/page.tsx 以 JSON.parse 讀 .transactions，零改動）。
+// ⛔ 只讀不寫：本 repo 不寫 ledger，合併後的物件不得回寫任何年度檔（會把舊年資料複製進新檔）。
+const FIRST_LEDGER_YEAR = 2026; // 最早的年度檔；更早的交易都在這個檔裡
+
+async function fetchLedgerYears(kind: 'income' | 'expense'): Promise<string> {
+  const y = new Date(Date.now() + 8 * 60 * 60 * 1000).getUTCFullYear();
+  const years = Array.from({ length: Math.max(1, y - FIRST_LEDGER_YEAR + 1) }, (_, i) => FIRST_LEDGER_YEAR + i);
+  const parts = await Promise.all(years.map(async yr => {
+    try {
+      const data = JSON.parse(await fetchFile(`finance/ledger/${kind}-${yr}.json`)) as { transactions?: unknown[] };
+      return data.transactions ?? [];
+    } catch {
+      return null;
+    }
+  }));
+  // 全部讀不到（GitHub API 故障／token 失效）→ 照舊拋錯，讓呼叫端 safe() 回 null、畫面不顯示；
+  //   不可回空陣列，否則趨勢圖會畫出一排 0，看起來像真的零收入。
+  if (parts.every(p => p === null)) throw new Error(`Failed to fetch any ${kind} ledger`);
+  return JSON.stringify({ transactions: parts.flatMap(p => p ?? []) });
+}
+
 export async function getIncomeLedger(): Promise<string> {
-  return fetchFile('finance/ledger/income-2026.json');
+  return fetchLedgerYears('income');
 }
 
 // ─── 月收支趨勢（L444，RCF-009 原設計「6個月趨勢圖」補完）──
 export async function getExpenseLedger(): Promise<string> {
-  return fetchFile('finance/ledger/expense-2026.json');
+  return fetchLedgerYears('expense');
 }

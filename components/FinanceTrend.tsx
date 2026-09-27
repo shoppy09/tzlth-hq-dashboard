@@ -44,7 +44,7 @@ export function FinanceTrend({ months }: { months: MonthlyTotals[] }) {
         ))}
       </div>
       <div className="text-[10px] mt-1.5" style={{ color: 'var(--text-secondary)' }}>
-        口徑：ledger 實收制（與月報一致）；手動補充另列不併入
+        口徑：ledger 實收制（與月報一致）
       </div>
     </div>
   );

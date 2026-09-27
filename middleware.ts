@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
  *
  * 設定：在 Vercel 專案 Environment Variables 設 BASIC_AUTH_USER + BASIC_AUTH_PASSWORD（Tim 自設）。
  * Fail-closed：未設定 env var → 一律 503，強制設定後才開放，避免「以為有保護其實沒設」。
- * 全站 gate：/api/* 亦一併保護（add-entry 有自身 PIN，UI 登入後瀏覽器自動帶 auth；無外部程式呼叫）。
+ * 全站 gate：/api/* 亦一併保護（UI 登入後瀏覽器自動帶 auth；無外部程式呼叫）。唯一例外＝/api/version（2026-09-28）。
  * 可逆：移除本檔即還原為公開站。
  */
 
@@ -18,6 +18,10 @@ export const config = {
 };
 
 export function middleware(req: NextRequest) {
+  // /api/version：唯一公開路徑（部署自報，見該 route 檔頭，2026-09-28）。放在 env 檢查之前，
+  // 否則 fail-closed 的 503 會先擋下；精確比對路徑，不用 startsWith。
+  if (req.nextUrl.pathname === '/api/version') return NextResponse.next();
+
   const expectedUser = process.env.BASIC_AUTH_USER;
   const expectedPass = process.env.BASIC_AUTH_PASSWORD;
 

@@ -1,6 +1,6 @@
 // app/clients/page.tsx
 // 客戶穿透視圖 v0（B-b，RCF-125）— 資料契約：tzlth-hq strategy/customer-360-spec.md
-// 來源切片：crm/client-log.md + finance/ledger/income-2026.json；LINE／預約明細留位未接。
+// 來源切片：crm/client-log.md + finance/ledger/income-*.json（2026 起各年度檔合併，見 lib/github.ts fetchLedgerYears）；LINE／預約明細留位未接。
 // ⛔ PII：只渲染 spec 🟢 欄位（lib/crm.ts 已在資料層擋掉 repo-only 欄）。
 
 import { getClientLog, getIncomeLedger } from '@/lib/github';
