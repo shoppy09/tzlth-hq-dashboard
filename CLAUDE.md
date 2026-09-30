@@ -46,6 +46,7 @@
 
 | 日期 | 修改內容 | 執行視窗 | 狀態 |
 |------|---------|---------|------|
+| 2026-09-30 | 【DEV】**Tim 待辦面板改版（HQ 組 3 L1204／RCF-216）**：勾選＝🟡 已回報、寫入只改單一項並檢查結果、失敗提示與重試、清單更新日、例行項按月、最近確認區；線上勾選→寫入→取消實測、回歸 ①～⑥ 通過。詳 archive | tzlth-hq（組 3） | ✅ |
 | 2026-09-28 | 【DEV/FIN】**四項（HQ L192②／L716／L586／L191）**：移除 external-revenue 入口與財務面板兩個 Tab；ledger 改讀 2026 起各年度檔（原硬編 2026）；公開 `/api/version`（Basic Auth 唯一例外）；25 日 banner 點名月底結帳。詳 `CLAUDE-archive-2026-09.md` | Claude Code | ✅ |
 | 2026-09-24 | 【DEV】新增 `.gitattributes`：文字檔一律以 LF 存入 repo、二進位檔明列不轉換（總部批次:B28／RCF-198 統一推送）。本 repo renormalize 零檔變動（index 原本即全為 LF）；零程式碼改動 | tzlth-hq（批次:B28） | ✅ |
 | 2026-09-09 | ⛔ **診斷退場下游清理：刪診斷 KpiCard ＋ 拆整條 GA4 孤兒鏈 ＋ retired 不計入健康度**（tzlth-hq 批次:B5，診斷 technical retirement 同批）：🔴 **只刪卡會 build 失敗**——grep 實證 `getGA4Log`／`getDiagnosisGA4Data`／`GA4WeekRow`／`parseGA4Log`／`ga4Md`／`ga4Live`／`ga4Row` 七者**除診斷卡外零消費者**，留著就是七個 unused。同批拆乾淨，並比照 2026-08-17 `getOutreachLog` 前例在 `lib/github.ts`／`lib/ga4.ts` 留碑不留碼（含 `DiagnosisGA4Data` 型別）。⚠️ **`GOOGLE_ANALYTICS_PROPERTY_ID` 不可刪**：`getWebsiteGA4Data` 仍以它為 `WEBSITE_GA4_PROPERTY_ID` 的 fallback，刪了哪天主 env 出事官網卡會靜默改讀診斷 property（已在 `lib/ga4.ts` 留註解）。📌 **`retired` 的處理取「篩選」不取「抹值」**：`health_score` 保留退場當下的 2（歷史事實），新增 `activeSystems` 過濾器——因 `lib/types.ts` 的 `health_score` 是 `number` 非 `number|null`，改型別會連累 `SystemCard` 的 `HealthSegments`。⚠️ **本列曾被自己的工具吃掉**：上一版用 bash 雙引號字串寫入，其中的反引號被 shell 當成命令替換，16 個識別字全被執行成空字串（commit 47c12df）——IMP-047 家族：**反引號與反斜線一樣，不該由 bash 命令字串承載**，已改用 Write 工具落檔重寫。驗收：build ✅ 7/7 static、`ƒ Proxy` 在。 | 總部視窗 | ✅ |
