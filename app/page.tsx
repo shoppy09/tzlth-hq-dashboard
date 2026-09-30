@@ -5,7 +5,7 @@ import { getWebsiteGA4Data } from '@/lib/ga4';
 import { parseTasks } from '@/lib/parse-tasks';
 import { SystemCard } from '@/components/SystemCard';
 import { DailyChecklist } from '@/components/DailyChecklist';
-import { TimActions } from '@/components/TimActions';
+import { TimActions, type TimAction } from '@/components/TimActions';
 import { TaskTabView } from '@/components/TaskTabView';
 import { FinancePanel } from '@/components/FinancePanel';
 import { SparklineTooltip } from '@/components/SparklineTooltip';
@@ -379,7 +379,8 @@ export default async function Home() {
   let financeSummary: FinanceSummary | null = null;
   let followerHistory: FollowerPoint[]      = [];
   let knowledgeFolders: KnowledgeFolder[]   = [];
-  let timActionsData: { id: string; title: string; detail: string; type: 'one-time' | 'weekly' | 'monthly' | 'quarterly'; due: string | null; priority: string; source_system: string; created_at: string; completed: boolean }[] = [];
+  let timActionsData: TimAction[] = [];
+  let timActionsUpdatedAt: string | null = null;
 
   // ── Core (required) ──────────────────────────────────
   try {
@@ -391,6 +392,7 @@ export default async function Home() {
       const timRaw = await getTimActions();
       const timParsed = JSON.parse(timRaw);
       timActionsData = Array.isArray(timParsed?.actions) ? timParsed.actions : [];
+      timActionsUpdatedAt = typeof timParsed?.updated_at === 'string' ? timParsed.updated_at : null;
     } catch { /* optional */ }
   } catch {
     return (
@@ -570,7 +572,7 @@ export default async function Home() {
       {dailyChecklistMd && <DailyChecklist md={dailyChecklistMd} />}
 
       {/* ── Tim 待辦（跨裝置同步）*/}
-      <TimActions actions={timActionsData} />
+      <TimActions actions={timActionsData} updatedAt={timActionsUpdatedAt} />
 
       {/* ── 健康警示（有問題才顯示）*/}
       {alertSystems.length > 0 && (
