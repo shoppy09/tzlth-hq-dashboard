@@ -25,6 +25,7 @@ export interface Task {
   priority: 'P0' | 'P1' | 'P2' | 'P3';
   system: string;
   content: string;
+  inProgress?: boolean; // tasks.md `- [~]`（2026-09-30 L1105）
 }
 
 export interface TaskSection {

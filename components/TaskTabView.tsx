@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 
-interface Task { priority: string; system: string; content: string; }
+interface Task { priority: string; system: string; content: string; inProgress?: boolean; }
 
 function priorityColor(p: string) {
   if (p === 'P0') return '#ef4444';
@@ -85,6 +85,14 @@ export function TaskTabView({
               >
                 {t.priority}
               </span>
+              {t.inProgress && (
+                <span
+                  className="text-xs font-bold px-2 py-0.5 rounded mt-0.5 shrink-0"
+                  style={{ backgroundColor: '#4f8ef720', color: '#4f8ef7' }}
+                >
+                  進行中
+                </span>
+              )}
               <div>
                 <div
                   className="text-xs font-semibold mb-0.5"

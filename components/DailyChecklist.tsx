@@ -8,81 +8,110 @@ interface ChecklistItem {
   task: string;
 }
 
-function parseDailyChecklist(md: string): ChecklistItem[] {
-  const today = new Date();
-  const dow = today.getDay(); // 0=Sun,1=Mon,...,5=Fri
-  const dom = today.getDate();
+// [2026-09-30 tzlth-hq 組 3＋19 L1106] 可用性修正：
+// ① 原本在伺服器渲染時就用 new Date() 算星期（Vercel＝UTC，頁面每 60 秒重產）⇒ 台灣 0-8 點
+//    伺服器端算成前一天；改為瀏覽器掛載後才計算（與勾選狀態同一時機）。
+// ② 原本沒有「每週六／每週日」分支 ⇒ 週日段落從未顯示；補齊 0-6。
+// ③ 原本「每月 25 日」只在 25 日當天顯示；改為月底段（25 日起）＋月初段（1-5 日）。
+// ④ 原 id＝段落＋全域序號 ⇒ 清單增刪一行，已勾狀態就對到別的項目；改為段落＋內容雜湊。
+// ⑤ 行尾 `<!-- ws: … -->` 是 soplint I23 的「對應排程檔哪一句」標記，顯示前剝除、不入雜湊。
+// ⑥ 寫入改為只送單一格；失敗退回勾選並顯示「未同步」（原本失敗靜默、伺服器也回 ok）。
+const WEEKDAY_HEADS: [string, number][] = [
+  ['## 每週一', 1], ['## 每週二', 2], ['## 每週三', 3], ['## 每週四', 4],
+  ['## 每週五', 5], ['## 每週六', 6], ['## 每週日', 0],
+];
+const WEEKDAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
-  const lines = md.split('\n');
+function hash(s: string): string {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+
+export function stripTag(s: string): string {
+  return s.replace(/\s*<!--[\s\S]*?-->\s*/g, ' ').trim();
+}
+
+export function parseDailyChecklist(md: string, now: Date): ChecklistItem[] {
+  const dow = now.getDay(); // 0=Sun … 6=Sat（瀏覽器時區）
+  const dom = now.getDate();
+
   const items: ChecklistItem[] = [];
   let include = false;
   let section = '';
-  let idx = 0;
 
-  for (const line of lines) {
-    if      (line.startsWith('## 每天必做'))     { include = true;      section = 'daily';   }
-    else if (line.startsWith('## 每週一'))       { include = dow === 1; section = 'mon';     }
-    else if (line.startsWith('## 每週二'))       { include = dow === 2; section = 'tue';     }
-    else if (line.startsWith('## 每週三'))       { include = dow === 3; section = 'wed';     }
-    else if (line.startsWith('## 每週四'))       { include = dow === 4; section = 'thu';     }
-    else if (line.startsWith('## 每週五'))       { include = dow === 5; section = 'fri';     }
-    else if (line.startsWith('## 每月 25 日'))   { include = dom === 25; section = 'month25'; }
-    else if (line.startsWith('## '))             { include = false; }
-
-    if (include) {
-      const m = line.match(/^- \[(.+?)\] (.+)/);
-      if (m) {
-        items.push({ id: `${section}-${idx++}`, dept: m[1], task: m[2] });
+  for (const line of md.split('\n')) {
+    if (line.startsWith('## ')) {
+      include = false;
+      if (line.startsWith('## 每天必做')) { include = true; section = 'daily'; }
+      for (const [head, d] of WEEKDAY_HEADS) {
+        if (line.startsWith(head)) { include = dow === d; section = WEEKDAY_KEYS[d]; }
       }
+      // 「每月 25 日」為舊標題（2026-09-30 前），保留相容
+      if (line.startsWith('## 每月月底') || line.startsWith('## 每月 25 日')) { include = dom >= 25; section = 'monthend'; }
+      if (line.startsWith('## 每月月初')) { include = dom <= 5; section = 'monthstart'; }
+      continue;
+    }
+    if (!include) continue;
+    const m = line.match(/^- \[(.+?)\] (.+)/);
+    if (m) {
+      const task = stripTag(m[2]);
+      items.push({ id: `${section}-${hash(m[1] + '|' + task)}`, dept: m[1], task });
     }
   }
   return items;
 }
 
 export function DailyChecklist({ md }: { md: string }) {
-  // [2026-08-30 修正 tasks L781 同族] toISOString() = UTC 日 → 台灣 08:00 當下 key 會跳日，
-  // 使當天已勾選項目在早上 8 點整批消失。改用本地日（瀏覽器時區＝台灣）。
-  const today = new Date().toLocaleDateString('sv');
-  const storageKey = `daily-checklist-${today}`;
-  const items = parseDailyChecklist(md);
-
+  const [today, setToday] = useState('');
+  const [items, setItems] = useState<ChecklistItem[]>([]);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
-  const [mounted, setMounted] = useState(false);
+  const [unsynced, setUnsynced] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
+    const now = new Date();
+    // [2026-08-30 修正 tasks L781 同族] toISOString()＝UTC 日；改用本地日（瀏覽器時區＝台灣）。
+    const d = now.toLocaleDateString('sv');
+    setToday(d);
+    setItems(parseDailyChecklist(md, now));
+    const storageKey = `daily-checklist-${d}`;
     try {
       const stored = localStorage.getItem(storageKey);
       if (stored) setChecked(JSON.parse(stored));
     } catch { /* ignore */ }
-    // Cross-device sync: fetch state from GitHub via API
     fetch('/api/checklist-state')
       .then(r => r.json())
       .then((allState: Record<string, Record<string, boolean>>) => {
-        const todayState = allState[today];
-        if (todayState && Object.keys(todayState).length > 0) {
-          setChecked(todayState);
-          try { localStorage.setItem(storageKey, JSON.stringify(todayState)); } catch { /* ignore */ }
-        }
+        const todayState = allState[d] ?? {};
+        setChecked(todayState);
+        try { localStorage.setItem(storageKey, JSON.stringify(todayState)); } catch { /* ignore */ }
       })
-      .catch(() => { /* ignore, fall back to localStorage */ });
-  }, [storageKey, today]);
+      .catch(() => { /* 讀取失敗：沿用 localStorage */ });
+  }, [md]);
 
   const toggle = (id: string) => {
-    const next = { ...checked, [id]: !checked[id] };
+    const nextVal = !checked[id];
+    const prev = checked;
+    const next = { ...checked, [id]: nextVal };
+    if (!nextVal) delete next[id];
     setChecked(next);
-    try { localStorage.setItem(storageKey, JSON.stringify(next)); } catch { /* ignore */ }
-    // Cross-device sync: write state to GitHub via API (fire-and-forget)
-    fetch('/api/checklist-state')
-      .then(r => r.json())
-      .then((allState: Record<string, Record<string, boolean>>) =>
-        fetch('/api/checklist-state', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...allState, [today]: next }),
-        })
-      )
-      .catch(() => { /* ignore write failure */ });
+    fetch('/api/checklist-state', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date: today, id, checked: nextVal }),
+    })
+      .then(async r => {
+        const data = await r.json().catch(() => ({ ok: false }));
+        if (!r.ok || !data.ok) throw new Error(data.error ?? `HTTP ${r.status}`);
+        const day = (data.day ?? next) as Record<string, boolean>;
+        setChecked(day);
+        setUnsynced(false);
+        try { localStorage.setItem(`daily-checklist-${today}`, JSON.stringify(day)); } catch { /* ignore */ }
+      })
+      .catch(() => {
+        setChecked(prev);
+        setUnsynced(true);
+      });
   };
 
   if (items.length === 0) return null;
@@ -131,10 +160,16 @@ export function DailyChecklist({ md }: { md: string }) {
           </div>
         </div>
 
+        {unsynced && (
+          <div className="text-xs mb-2" style={{ color: '#ef4444' }}>
+            ⚠️ 未同步：剛才的勾選沒有寫進總部，已退回，請再點一次
+          </div>
+        )}
+
         {/* Task list */}
         <div className="space-y-0">
           {items.map((item) => {
-            const isChecked = mounted ? !!checked[item.id] : false;
+            const isChecked = !!checked[item.id];
             return (
               <label
                 key={item.id}

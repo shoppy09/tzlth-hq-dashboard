@@ -88,9 +88,12 @@ export async function getChecklistState(): Promise<string> {
   }
 }
 
-export async function putChecklistState(
-  state: Record<string, Record<string, boolean>>
-): Promise<void> {
+export type ChecklistState = Record<string, Record<string, boolean>>;
+
+// [2026-09-30 tzlth-hq 組 3＋19 L1106] 原 putChecklistState 由前端送整份狀態覆蓋、不檢查 PUT 結果，
+// route 也一律回 ok ⇒ 寫入失敗（含 409 衝突）時畫面照樣顯示已勾。比照 setTimActionKey：
+// 伺服器端只改被點的那一格（date → id），讀最新 sha 後寫入；409 重試一次；失敗一律拋錯。
+export async function setChecklistKey(date: string, id: string, checked: boolean): Promise<ChecklistState> {
   const apiUrl = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${CHECKLIST_STATE_PATH}`;
   const headers: Record<string, string> = {
     Authorization: `Bearer ${TOKEN ?? ''}`,
@@ -98,23 +101,39 @@ export async function putChecklistState(
     'Content-Type': 'application/json',
   };
 
-  let sha: string | undefined;
-  const getRes = await fetch(apiUrl, { headers });
-  if (getRes.ok) {
-    const data = await getRes.json() as { sha: string };
-    sha = data.sha;
-  }
+  for (let attempt = 0; attempt < 2; attempt++) {
+    let sha: string | undefined;
+    let state: ChecklistState = {};
+    const getRes = await fetch(apiUrl, { headers, cache: 'no-store' });
+    if (getRes.ok) {
+      const data = await getRes.json() as { sha: string; content: string };
+      sha = data.sha;
+      state = JSON.parse(Buffer.from(data.content, 'base64').toString('utf-8')) as ChecklistState;
+    } else if (getRes.status !== 404) {
+      throw new Error(`讀取勾選狀態失敗（HTTP ${getRes.status}）`);
+    }
 
-  const content = Buffer.from(JSON.stringify(state, null, 2)).toString('base64');
-  await fetch(apiUrl, {
-    method: 'PUT',
-    headers,
-    body: JSON.stringify({
-      message: 'chore: update daily checklist state',
-      content,
-      ...(sha ? { sha } : {}),
-    }),
-  });
+    const day = { ...(state[date] ?? {}) };
+    if (checked) day[id] = true;
+    else delete day[id];
+    if (Object.keys(day).length > 0) state[date] = day;
+    else delete state[date];
+
+    const content = Buffer.from(JSON.stringify(state, null, 2) + '\n').toString('base64');
+    const putRes = await fetch(apiUrl, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({
+        message: `chore: daily checklist ${checked ? '勾選' : '取消'} ${date} ${id}`,
+        content,
+        ...(sha ? { sha } : {}),
+      }),
+    });
+    if (putRes.ok) return state;
+    if (putRes.status === 409 && attempt === 0) continue;
+    throw new Error(`寫入勾選狀態失敗（HTTP ${putRes.status}）`);
+  }
+  throw new Error('寫入勾選狀態失敗（重試後仍衝突）');
 }
 
 // ─── Tim Actions (cross-device sync) ─────────────────────

@@ -13,13 +13,16 @@ export function parseTasks(md: string): Task[] {
       continue;
     }
 
-    // Detect uncompleted task: - [ ] P1: content
-    const taskMatch = line.match(/^-\s+\[\s+\]\s+(P[0-3])：(.+)/);
+    // Detect uncompleted task: - [ ] P1：content，或進行中 - [~] P2：content
+    // [2026-09-30 L1105] 原本只收 `[ ]` ⇒ 進行中 `[~]` 的 P2 任務（例：說明書格式推廣）在儀表板消失。
+    // 仍只收頂層行（縮排子項不收）；P3 由 page.tsx 決定不顯示（刻意只放 P1/P2）。
+    const taskMatch = line.match(/^-\s+\[(\s|~)\]\s+(P[0-3])：(.+)/);
     if (taskMatch) {
       tasks.push({
-        priority: taskMatch[1] as Task['priority'],
+        priority: taskMatch[2] as Task['priority'],
         system: currentSystem,
-        content: taskMatch[2].trim(),
+        content: taskMatch[3].trim(),
+        inProgress: taskMatch[1] === '~',
       });
     }
   }
