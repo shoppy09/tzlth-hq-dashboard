@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface ChecklistItem {
   id: string;
@@ -67,6 +67,8 @@ export function DailyChecklist({ md }: { md: string }) {
   const [items, setItems] = useState<ChecklistItem[]>([]);
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [unsynced, setUnsynced] = useState(false);
+  // 載入時的讀取若晚於使用者第一次點擊回來，不得覆蓋（2026-10-01 線上驗證時順查出的競態）
+  const touched = useRef(false);
 
   useEffect(() => {
     const now = new Date();
@@ -82,6 +84,7 @@ export function DailyChecklist({ md }: { md: string }) {
     fetch('/api/checklist-state')
       .then(r => r.json())
       .then((allState: Record<string, Record<string, boolean>>) => {
+        if (touched.current) return;
         const todayState = allState[d] ?? {};
         setChecked(todayState);
         try { localStorage.setItem(storageKey, JSON.stringify(todayState)); } catch { /* ignore */ }
@@ -90,6 +93,7 @@ export function DailyChecklist({ md }: { md: string }) {
   }, [md]);
 
   const toggle = (id: string) => {
+    touched.current = true;
     const nextVal = !checked[id];
     const prev = checked;
     const next = { ...checked, [id]: nextVal };
