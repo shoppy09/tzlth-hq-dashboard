@@ -57,7 +57,8 @@ export async function getDailyRevenue(ym: string): Promise<string | null> {
 // 社群 KPI 單一來源＝social/metrics.json，已由下方 getSocialMetrics 供應；本函式零呼叫者。
 
 export async function getFollowerHistory() {
-  // Try threads-dashboard repo first (updated by auto-fetch.bat), fall back to tzlth-hq
+  // 先讀看板 repo（由 tzlth-hq 的 fetch-threads.yml〔A-01〕每日寫入；原註「auto-fetch.bat」已於 2026-05 棄用），
+  // 失敗才退回 tzlth-hq social/followers-history.json（⚠️ 該檔停在 2026-04-12，只是應急備援）
   try {
     return await fetchFile('follower-history.json', 'tzlth-threads-dashboard', 60);
   } catch {

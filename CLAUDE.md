@@ -10,21 +10,27 @@
 
 ## 技術架構
 - Framework：Next.js + TypeScript
-- 部署：Vercel（hq-dashboard-alpha.vercel.app）
-- 資料來源：讀取本機 tzlth-hq/ 各 Markdown 檔案 + GA4 API + Threads API
+- 部署：Vercel，正式網址 **dashboard.careerssl.com**（`hq-dashboard-alpha.vercel.app` 為 Vercel 備援網域）；版本自報 `/api/version`（全站 Basic Auth 的唯一例外）（2026-10-03 更正；架構全貌見 tzlth-hq `projects/SYS-07-hq-dashboard.md`）
+- 資料來源：**經 GitHub Contents API 讀 `shoppy09/tzlth-hq`（線上 main，非本機）**＋看板 repo `follower-history.json`＋官網 repo 排程文章＋GA4／LINE／Kit／預約 stats／財務 summary 五個外部 API；另**回寫** tzlth-hq 兩個狀態檔（`dev/daily-checklist-state.json`、`dev/tim-actions-state.json`）。逐項讀寫契約見說明書 §C（2026-10-03 更正；架構全貌見 tzlth-hq `projects/SYS-07-hq-dashboard.md`）
+- ⛔ **新增或移除任何 HQ 讀取點／回寫點 → 同步更新說明書 §C**（說明書的維護觸發點；否則 §C 會像本檔 04-11 版一樣默默漂移）
 - ⛔ **指令中心已於 2026-09-09 移除**（Tim 裁決：總部定位＝資訊集合體，不是問答介面）：本 repo 自此**無任何 LLM 依賴**，`@google/genai` 已 uninstall，儀表板隨之退出 tzlth-hq `批次:B5` 的 2026-10-16 Gemini 遷移母體。決策全文＝RCF-123 補記四；自由問答需求改由 LINE Bot「隨身總部包 B」承接（RCF-139 補記二）。
 
 ## Vercel 環境變數清單
-| 變數名稱 | 用途 | 最後更新 |
-|---------|------|---------|
-| GITHUB_TOKEN | 讀取 GitHub 私有 repo | 2026-04-11 |
-| ~~GOOGLE_API_KEY~~ | ⛔ 2026-09-09 起**零程式消費者**（指令中心移除）。**刻意暫留 env var 不刪**：程式碼可 `git revert` 回退，金鑰刪了要重新申請 ⇒ 留著換回退零阻力。建議 2026-10-16 後或下次季度盤點再由 Tim 於 Vercel 刪除 | 2026-09-09 |
-| KIT_API_KEY | Kit 訂閱者數 | 2026-04-12 |
-| LINE_CHANNEL_ACCESS_TOKEN | LINE 粉絲數 | 2026-04-12 |
-| GOOGLE_ANALYTICS_PROPERTY_ID | GA4 診斷系統 Property ID（532491434）| 2026-04-12 |
-| WEBSITE_GA4_PROPERTY_ID | GA4 官網 Property ID（530451281）| 2026-04-12 |
-| GOOGLE_SERVICE_ACCOUNT_JSON | GA4 Service Account（授權兩個 GA4 Property）| 2026-04-12 |
-| BOOKING_STATS_URL | 預約系統 /api/stats（預約 KPI 來源）| 2026-04-12 |
+> 2026-10-03 依 `vercel env ls`（只看名稱）＋程式碼 `git grep process.env` 重建：Vercel 上 12 個名稱＝程式讀的 11 個＋已無消費者的 `GOOGLE_API_KEY`（另 `VERCEL_GIT_COMMIT_SHA`／`VERCEL_REGION` 為平台自帶）。原表漏 4 個（BASIC_AUTH ×2、BOOKING_STATS_KEY、FINANCE_SUMMARY_API_KEY）。⛔ 只記名稱、不記值（RCF-111）；憑證清冊 SoT＝tzlth-hq `security/security-log.md`。
+> ⚠️ 型別：Vercel 2026-08-24 起分 **Config**（有專案權限者可在主控台／`vercel env pull` 讀回明文）與 **Secret**（存了就讀不回）。下表標「Config」的憑證類 5 個，改成 Secret 須刪除重加（只能用於正式／預覽環境），待 Tim 處理（tzlth-hq tasks P3）。
+
+| 變數名稱 | 用途 | 型別 |
+|---------|------|------|
+| GITHUB_TOKEN | 讀 tzlth-hq／看板／官網 repo；寫回兩個狀態檔 | Config ⚠️ |
+| BASIC_AUTH_USER / BASIC_AUTH_PASSWORD | `middleware.ts` 全站 Basic Auth（未設＝一律 503） | Secret |
+| GOOGLE_SERVICE_ACCOUNT_JSON | GA4 Data API 服務帳號 | Config ⚠️ |
+| WEBSITE_GA4_PROPERTY_ID | 官網 GA4 Property ID | Config |
+| GOOGLE_ANALYTICS_PROPERTY_ID | ⚠️ 原為**診斷** Property ID；`lib/ga4.ts:36` 在官網 ID 未設時退回用它——退回時會把診斷資料當官網資料顯示（錯的備援，tzlth-hq tasks P3） | Config |
+| KIT_API_KEY | Kit 訂閱者數（放在網址參數；只在伺服器端呼叫） | Config ⚠️ |
+| LINE_CHANNEL_ACCESS_TOKEN | 主 OA 好友數（insight API） | Config ⚠️ |
+| BOOKING_STATS_URL / BOOKING_STATS_KEY | 預約後端 `/api/stats`（Bearer） | Config／Secret |
+| FINANCE_SUMMARY_API_KEY | 財務 `/api/summary`（Bearer，與財務 `SUMMARY_API_KEY` 同值異名） | Secret |
+| ~~GOOGLE_API_KEY~~ | ⛔ 2026-09-09 起零消費者（指令中心移除），刻意暫留；建議由 Tim 於 Vercel 刪除 | Config ⚠️ |
 
 ---
 ## ⚡ 跨視窗同步協議（最高優先規則）
@@ -37,7 +43,7 @@
 > 🔴 **2026-08-23 dashboard 實查更正：本 repo 的 Vercel Git auto-deploy 是「開啟」的**（Deployments 列表證每個 commit 皆有 git-source 部署，含**純 docs commit `bf914e5`**）⇒ **`git push` 即觸發部署上線**，`npx vercel --prod` 為加速/備援。原記「三步缺一不可」的第三步不再是唯一途徑。
 > ⛔ **但 `npm run build` 仍為 HARD STOP、更不能跳過**：本 repo 是 Next.js，build 失敗時 Vercel **靜默保留舊版**只寄信通知（2026-04-29 事故原型）⇒ 不 build 就 push，會以為上線了其實沒有。
 > 總部主檔規則零原載「Vercel GitHub 自動部署永久停用（2026-04-29）」為錯誤通則（該日處置只針對看板一個專案，IMP-088），已於 2026-08-23 改寫為逐 repo 記載（RCF-153）。
-> ⚠️ 本機 Vercel 憑證已於 2026-08-15～08-22 間消失，`npx vercel --prod` 回 `No existing credentials found`，待 Tim `vercel login`；本 repo 因 auto-deploy 開啟不受影響。
+> ~~⚠️ 本機 Vercel 憑證已於 2026-08-15～08-22 間消失…待 Tim `vercel login`~~ ✅ 2026-08-23 已重新登入恢復（2026-10-03 `vercel ls`／`vercel env ls` 裸跑可用）
 **步驟 1 提醒**：「更新本文件最近修改記錄」= 更新本 CLAUDE.md 的「最近修改記錄」表格。
 
 > 未完成收尾七件事 = 任務未完成。未 push + deploy = 儀表板看不到。
@@ -46,6 +52,7 @@
 
 | 日期 | 修改內容 | 執行視窗 | 狀態 |
 |------|---------|---------|------|
+| 2026-10-03 | 【SYS-07】**說明書九章化反查（tzlth-hq RCF-187 第 7 份）**：部門清單 12→16、`github.ts` 舊註解、本檔技術架構／env 表 8→12 列（含 Config 型警示）＋讀取點維護觸發行。全文見 `CLAUDE-archive-2026-10.md` | tzlth-hq | ✅ |
 | 2026-10-01 | 【SYS-07】**今日任務清單可用性修正（RCF-218）**：寫入單格＋失敗退回提示、星期改瀏覽器端、補週六日與月初月底、id 改內容雜湊、剝除 ws 標記、刪寫死例行卡；P2 進行中標籤。`a4792c5`＋`a22da4b` live | tzlth-hq 組 3＋19 | ✅ |
 | 2026-09-30 | 【DEV】**Tim 待辦面板改版（HQ 組 3 L1204／RCF-216）**：勾選＝🟡 已回報、寫入只改單一項並檢查結果、失敗提示與重試、清單更新日、例行項按月、最近確認區；線上勾選→寫入→取消實測、回歸 ①～⑥ 通過。詳 archive | tzlth-hq（組 3） | ✅ |
 | 2026-09-28 | 【DEV/FIN】**四項（HQ L192②／L716／L586／L191）**：移除 external-revenue 入口與財務面板兩個 Tab；ledger 改讀 2026 起各年度檔（原硬編 2026）；公開 `/api/version`（Basic Auth 唯一例外）；25 日 banner 點名月底結帳。詳 `CLAUDE-archive-2026-09.md` | Claude Code | ✅ |
@@ -63,7 +70,6 @@
 | 2026-07-02 | 收尾規則指針化（RCF-120 D6）：舊「收尾四/五件事」清單 → 總部 CLAUDE.md 收尾七件事指針式（部署特例保留在地）；消除與主檔的版本漂移 | 總部視窗 | ✅ |
 | 2026-04-13 | 新增知識庫區塊（#knowledge，GitHub 4 資料夾，methodology/operations 顯示全文，decisions/reference 顯示清單）| 總部視窗 | ✅ |
 | 2026-04-13 | 導航列新增「知識庫」按鈕（layout.tsx）| 總部視窗 | ✅ |
-| 2026-04-13 | 新增指令中心（Gemini 2.0 Flash，6 預設指令）| 總部視窗 | ✅ |
 | 2026-04-13 | UI 全面優化（快速連結列、系統卡片 URL、並排雙欄）| 總部視窗 | ✅ |
 | 2026-04-17 | 補齊環境變數清單：新增 WEBSITE_GA4_PROPERTY_ID + BOOKING_STATS_URL；修正 GOOGLE_ANALYTICS_PROPERTY_ID 值（530451281→532491434）| 總部視窗 | ✅ |
 

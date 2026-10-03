@@ -354,6 +354,9 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 // ─── Department list ──────────────────────────────────────
+// 2026-10-03：補成 16 部門（原寫死 12、缺 EDU／GRW／IAUD／EAUD；產品部去掉已退場的診斷）。
+// ⚠️ 這是主規則檔「部門架構」表＋strategy/department-charters.md 的寫死副本——部門增減時要回來改這裡
+//    （tzlth-hq projects/SYS-07-hq-dashboard.md §C 列為已知漂移源）。
 const departments = [
   { dept: '人資部 HR',  role: '員工冊・盤點・健康度' },
   { dept: '開發部 DEV', role: '功能開發・Bug・版本管理' },
@@ -365,8 +368,12 @@ const departments = [
   { dept: '策略部 STR', role: '組織架構・長期規劃・總管模式' },
   { dept: '財務部 FIN', role: '收入・支出・月淨利・未收款' },
   { dept: '客戶部 CRM', role: '諮詢記錄・來源追蹤・轉介紹' },
-  { dept: '產品部 PRD', role: '診斷・預約・路線圖・轉換率' },
+  { dept: '產品部 PRD', role: '預約・電子書・路線圖・定價' },
   { dept: '法務部 LEG', role: '服務條款・隱私政策・合作合約' },
+  { dept: '課程部 EDU', role: '課程目錄・工作坊・升 A 類追蹤' },
+  { dept: '成長分析師 GRW', role: '數據解讀・KPI 基準線・成長建議' },
+  { dept: '內稽部 IAUD', role: '查照前自查・缺口攔截' },
+  { dept: '外稽部 EAUD', role: '部署後驗證・回歸清單' },
 ];
 
 // ══════════════════════════════════════════════════════════
