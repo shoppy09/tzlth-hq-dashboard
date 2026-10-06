@@ -25,7 +25,7 @@
 | BASIC_AUTH_USER / BASIC_AUTH_PASSWORD | `middleware.ts` 全站 Basic Auth（未設＝一律 503） | Secret |
 | GOOGLE_SERVICE_ACCOUNT_JSON | GA4 Data API 服務帳號 | Config ⚠️ |
 | WEBSITE_GA4_PROPERTY_ID | 官網 GA4 Property ID | Config |
-| GOOGLE_ANALYTICS_PROPERTY_ID | ⚠️ 原為**診斷** Property ID；`lib/ga4.ts:36` 在官網 ID 未設時退回用它——退回時會把診斷資料當官網資料顯示（錯的備援，tzlth-hq tasks P3） | Config |
+| GOOGLE_ANALYTICS_PROPERTY_ID | 原為**診斷** Property ID。2026-10-06 起程式碼不再讀取（`lib/ga4.ts` 已拿掉錯的備援）；只設在 Production，刪不刪由 Tim 決定，不刪無影響 | Config |
 | KIT_API_KEY | Kit 訂閱者數（放在網址參數；只在伺服器端呼叫） | Config ⚠️ |
 | LINE_CHANNEL_ACCESS_TOKEN | 主 OA 好友數（insight API） | Config ⚠️ |
 | BOOKING_STATS_URL / BOOKING_STATS_KEY | 預約後端 `/api/stats`（Bearer） | Config／Secret |
@@ -52,6 +52,7 @@
 
 | 日期 | 修改內容 | 執行視窗 | 狀態 |
 |------|---------|---------|------|
+| 2026-10-06 | 【SYS-07】**近期內容排程重寫＋GA4 錯的備援移除**（tzlth-hq 組 H，Tim「執行」）：解析移至 `lib/content-calendar.ts`，依表頭取欄、續表沿用表頭、台北日期，改顯示平台不顯示狀態；今天 434 列誤顯示→37 列。詳 archive | 總部視窗 | ✅ |
 | 2026-10-03 | 【SYS-07】**說明書九章化反查（tzlth-hq RCF-187 第 7 份）**：部門清單 12→16、`github.ts` 舊註解、本檔技術架構／env 表 8→12 列（含 Config 型警示）＋讀取點維護觸發行。全文見 `CLAUDE-archive-2026-10.md` | tzlth-hq | ✅ |
 | 2026-10-01 | 【SYS-07】**今日任務清單可用性修正（RCF-218）**：寫入單格＋失敗退回提示、星期改瀏覽器端、補週六日與月初月底、id 改內容雜湊、剝除 ws 標記、刪寫死例行卡；P2 進行中標籤。`a4792c5`＋`a22da4b` live | tzlth-hq 組 3＋19 | ✅ |
 | 2026-09-30 | 【DEV】**Tim 待辦面板改版（HQ 組 3 L1204／RCF-216）**：勾選＝🟡 已回報、寫入只改單一項並檢查結果、失敗提示與重試、清單更新日、例行項按月、最近確認區；線上勾選→寫入→取消實測、回歸 ①～⑥ 通過。詳 archive | tzlth-hq（組 3） | ✅ |
@@ -71,7 +72,6 @@
 | 2026-04-13 | 新增知識庫區塊（#knowledge，GitHub 4 資料夾，methodology/operations 顯示全文，decisions/reference 顯示清單）| 總部視窗 | ✅ |
 | 2026-04-13 | 導航列新增「知識庫」按鈕（layout.tsx）| 總部視窗 | ✅ |
 | 2026-04-13 | UI 全面優化（快速連結列、系統卡片 URL、並排雙欄）| 總部視窗 | ✅ |
-| 2026-04-17 | 補齊環境變數清單：新增 WEBSITE_GA4_PROPERTY_ID + BOOKING_STATS_URL；修正 GOOGLE_ANALYTICS_PROPERTY_ID 值（530451281→532491434）| 總部視窗 | ✅ |
 
 ---
 ## 總部連結（TZLTH-HQ）

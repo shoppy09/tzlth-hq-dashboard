@@ -3,6 +3,7 @@ import { buildLedgerTrend } from '@/lib/finance';
 import type { MonthlyTotals, LedgerFile } from '@/lib/finance';
 import { getWebsiteGA4Data } from '@/lib/ga4';
 import { parseTasks } from '@/lib/parse-tasks';
+import { parseContentCalendar, type ContentItem } from '@/lib/content-calendar';
 import { SystemCard } from '@/components/SystemCard';
 import { DailyChecklist } from '@/components/DailyChecklist';
 import { TimActions, type TimAction } from '@/components/TimActions';
@@ -13,7 +14,7 @@ import { CommandsSearch } from '@/components/CommandsSearch';
 import { System } from '@/lib/types';
 
 // ─── Types ────────────────────────────────────────────────
-interface ContentItem  { date: string; type: string; topic: string; status: string; link?: string; }
+// ContentItem 與排程解析已移至 lib/content-calendar.ts（2026-10-06）
 interface FinanceSummary { income: string; expense: string; profit: string; }
 interface UnpaidItem { client: string; service: string; amount: number; dueDate: string; status: string; overdue: boolean; }
 interface UnpaidSummary { count: number; totalAmount: number; overdueCount: number; items: UnpaidItem[]; }
@@ -43,43 +44,7 @@ interface SocialMetrics {
 }
 
 // ─── Parsers ──────────────────────────────────────────────
-function parseItemDate(dateStr: string): Date | null {
-  const m = dateStr.match(/^(\d{1,2})\/(\d{1,2})$/);
-  if (!m) return null;
-  const now = new Date();
-  const d = new Date(now.getFullYear(), parseInt(m[1], 10) - 1, parseInt(m[2], 10));
-  if (now.getTime() - d.getTime() > 180 * 24 * 60 * 60 * 1000) d.setFullYear(d.getFullYear() + 1);
-  return d;
-}
-
-function parseContentCalendar(md: string): ContentItem[] {
-  const lines = md.split('\n');
-  const items: ContentItem[] = [];
-  let inTable = false;
-  for (const line of lines) {
-    if (line.includes('| 日期 |')) { inTable = true; continue; }
-    if (inTable && line.startsWith('|---')) continue;
-    if (inTable && line.startsWith('|')) {
-      const cols = line.split('|').map(s => s.trim()).filter(Boolean);
-      if (cols.length >= 4 && cols[0] !== '-' && cols[0] !== '' && !cols[0].includes('---')) {
-        const isNew = cols.length >= 6;
-        const rawLink = isNew ? cols[6] : cols[5];
-        const mdMatch = rawLink?.match(/\[.*?\]\((.*?)\)/);
-        const link = mdMatch ? mdMatch[1] : (rawLink && rawLink !== '-' && rawLink !== '' ? rawLink : undefined);
-        items.push({ date: cols[0], type: cols[1], topic: isNew ? cols[3] : cols[2], status: isNew ? cols[5] : (cols[4] ?? cols[3]), link });
-      }
-    } else if (inTable && !line.startsWith('|')) { inTable = false; }
-  }
-  const now = new Date();
-  const cutoffPast   = new Date(now.getTime() - 3  * 24 * 60 * 60 * 1000);
-  const cutoffFuture = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-  return items.filter(i => {
-    if (i.date === '-' || i.topic === '-' || i.topic === '') return false;
-    const d = parseItemDate(i.date);
-    if (!d) return true;
-    return d >= cutoffPast && d <= cutoffFuture;
-  });
-}
+// parseItemDate／parseContentCalendar 已移至 lib/content-calendar.ts（2026-10-06：依表頭取欄、續表沿用表頭、台北日期）
 
 // parseOutreachLog / OutreachStats / 外展 KpiCard 已於 2026-08-17 移除：
 // 唯一資料源 business/outreach-log.md 早在 2026-05-27 廢棄（SoT 遷至 Google Sheets
@@ -196,12 +161,14 @@ function statusColor(s: string) {
   if (s === '草稿'   || s === '待草稿')               return '#f97316';
   return '#64748b';
 }
-function typeIcon(t: string) {
-  if (t === '影片') return '🎬';
-  if (t === '貼文') return '✏️';
-  if (t === '文章') return '📝';
-  if (t === '廣播') return '📢';
-  if (t === '電子報') return '✉️';
+function platformIcon(p: string) {
+  if (p === '官網') return '📝';
+  if (p === 'Threads') return '🧵';
+  if (p === 'FB') return '📘';
+  if (p === 'IG') return '📸';
+  if (p === '影片') return '🎬';
+  if (p === 'LINE') return '📢';
+  if (p === '電子報') return '✉️';
   return '📌';
 }
 function healthColor(score: number) {
@@ -800,11 +767,11 @@ export default async function Home() {
             {contentItems.map((item, i) => (
               <div key={i} className="flex items-center justify-between px-4 py-3 gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <span className="text-base shrink-0">{typeIcon(item.type)}</span>
+                  <span className="text-base shrink-0">{platformIcon(item.platform)}</span>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-xs font-semibold" style={{ color: 'var(--accent)' }}>{item.date}</span>
-                      <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{item.type}</span>
+                      <span className="text-xs font-semibold" style={{ color: 'var(--accent)' }}>{item.label}</span>
+                      <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{item.platform}</span>
                     </div>
                     {item.link ? (
                       <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-sm truncate block hover:underline" style={{ color: 'var(--accent)', textDecoration: 'none' }}>{item.topic}</a>
@@ -813,12 +780,6 @@ export default async function Home() {
                     )}
                   </div>
                 </div>
-                <span
-                  className="text-xs font-semibold px-2 py-0.5 rounded shrink-0"
-                  style={{ backgroundColor: statusColor(item.status) + '20', color: statusColor(item.status) }}
-                >
-                  {item.status}
-                </span>
               </div>
             ))}
           </div>

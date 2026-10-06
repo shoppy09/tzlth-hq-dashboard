@@ -3,7 +3,7 @@
  * 使用 Google Service Account 驗證，無需手動授權
  *
  * 需要的 Vercel 環境變數：
- *   GOOGLE_ANALYTICS_PROPERTY_ID  — GA4 數字 Property ID（非 G-XXXXXX，是純數字）
+ *   WEBSITE_GA4_PROPERTY_ID       — 官網 GA4 數字 Property ID（非 G-XXXXXX，是純數字）；未設＝官網卡不顯示
  *   GOOGLE_SERVICE_ACCOUNT_JSON   — Service Account JSON 整份貼成一行
  */
 
@@ -33,7 +33,9 @@ export interface WebsiteGA4Data {
 
 export async function getWebsiteGA4Data(): Promise<WebsiteGA4Data | null> {
   // 官網使用獨立的 Property ID（G-TK8D1DX7MJ 對應的數字 ID）
-  const propertyId = process.env.WEBSITE_GA4_PROPERTY_ID || process.env.GOOGLE_ANALYTICS_PROPERTY_ID;
+  // 2026-10-06 拿掉 GOOGLE_ANALYTICS_PROPERTY_ID 備援：那是診斷的 Property，退回時會把診斷資料當官網資料顯示。
+  // 官網 ID 未設 → 回 null（卡片顯示無資料），不顯示錯的數字。
+  const propertyId = process.env.WEBSITE_GA4_PROPERTY_ID;
   const credJson   = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
   if (!propertyId || !credJson) return null;
   try {
@@ -82,5 +84,5 @@ export async function getWebsiteGA4Data(): Promise<WebsiteGA4Data | null> {
 // AI 履歷診斷 technical retirement 完成，唯一消費者診斷 KpiCard 已拆除。
 // 比照 lib/github.ts 既有慣例，留碑不留碼；歷史資料仍在 GA4 property 內。
 // 同批移除其專屬型別 DiagnosisGA4Data。
-// 不可刪 GOOGLE_ANALYTICS_PROPERTY_ID 這個 env：getWebsiteGA4Data 仍以它為
-// WEBSITE_GA4_PROPERTY_ID 的 fallback。
+// 2026-10-06：getWebsiteGA4Data 已不再以 GOOGLE_ANALYTICS_PROPERTY_ID 為備援，本 repo 程式碼不再讀這個 env；
+// 要不要從 Vercel 刪除由 Tim 決定（不刪無影響）。
