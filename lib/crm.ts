@@ -18,7 +18,7 @@ export interface TimelineEvent {
 
 export interface ClientView {
   clientCode: string;              // 主鍵 C-YYYYMM-NNN
-  source: string;                  // THR/LINE/REF/WEB/DIAG/OTHER
+  source: string;                  // THR/LINE/REF/WEB/DIAG/PRG/104/OTHER（PRG／104 2026-10-09 加，HQ RCF-234）
   consultType: string;             // RES/CAR/INT/CHG/COMP
   servicePlan: string;
   sessionCount: number;            // 第 N 次；≥2 = 回訪

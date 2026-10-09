@@ -10,7 +10,7 @@ export const metadata = { title: '客戶穿透視圖 | 職涯停看聽 總部' }
 export const dynamic = 'force-dynamic';
 
 const SOURCE_LABEL: Record<string, string> = {
-  THR: 'Threads', LINE: 'LINE@', REF: '轉介紹', WEB: '官網', DIAG: '診斷', OTHER: '其他',
+  THR: 'Threads', LINE: 'LINE@', REF: '轉介紹', WEB: '官網', DIAG: '診斷', PRG: '合作計劃', '104': '104 平台', OTHER: '其他',
 };
 
 export default async function ClientsPage() {
