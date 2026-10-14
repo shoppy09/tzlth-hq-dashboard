@@ -42,6 +42,7 @@
 **本 repo 部署特例（步驟 0）**：程式碼修改＝`npm run build` → git push → `npx vercel --prod`。
 > 🔴 **2026-08-23 dashboard 實查更正：本 repo 的 Vercel Git auto-deploy 是「開啟」的**（Deployments 列表證每個 commit 皆有 git-source 部署，含**純 docs commit `bf914e5`**）⇒ **`git push` 即觸發部署上線**，`npx vercel --prod` 為加速/備援。原記「三步缺一不可」的第三步不再是唯一途徑。
 > ⛔ **但 `npm run build` 仍為 HARD STOP、更不能跳過**：本 repo 是 Next.js，build 失敗時 Vercel **靜默保留舊版**只寄信通知（2026-04-29 事故原型）⇒ 不 build 就 push，會以為上線了其實沒有。
+> 🔒 **本機 build 閘（2026-10-14 起，總部 L820／RCF-244）**：本 repo 的 `.git/hooks/pre-push` 會比對要推的內容有沒有本機 build 成功的記號；沒有、且工作樹乾淨 → 自動跑 `npm run build`（約 15～30 秒），失敗就擋下 ⇒ **push 指令要給足 timeout（≥300 秒）**。推完查部署結果：`python -X utf8 C:/Users/USER/Desktop/tzlth-hq/scripts/deploy_status.py 儀表板 --wait`（⚠️ 最多等 10 分鐘，Bash timeout 給 660000）。略過：`TZLTH_SKIP_BUILD_GATE=1 git push`（會記錄、收尾會提醒）。本體與安裝在總部 `scripts/build_gate.py`、`scripts/install_git_hooks.py`；本機 hook 不入版控，換機要重裝。
 > 總部主檔規則零原載「Vercel GitHub 自動部署永久停用（2026-04-29）」為錯誤通則（該日處置只針對看板一個專案，IMP-088），已於 2026-08-23 改寫為逐 repo 記載（RCF-153）。
 > ~~⚠️ 本機 Vercel 憑證已於 2026-08-15～08-22 間消失…待 Tim `vercel login`~~ ✅ 2026-08-23 已重新登入恢復（2026-10-03 `vercel ls`／`vercel env ls` 裸跑可用）
 **步驟 1 提醒**：「更新本文件最近修改記錄」= 更新本 CLAUDE.md 的「最近修改記錄」表格。
@@ -52,6 +53,7 @@
 
 | 日期 | 修改內容 | 執行視窗 | 狀態 |
 |------|---------|---------|------|
+| 2026-10-14 | 【DEV】**本機 build 閘＋推送後部署結果查詢（總部 L820，RCF-244）**：`.git/hooks/pre-push` 由總部安裝，沒有 build 記號就自動 build、失敗擋下；推完用總部 `deploy_status.py` 查部署結果。本 repo 程式碼未動。說明見部署段 🔒 行 | 總部視窗 | ✅ |
 | 2026-10-09 | 客戶頁來源標籤加 `PRG: 合作計劃`、`104: 104 平台`（`34dfc48`；HQ RCF-234）。桌機線上核對 46 位：合作計劃 14／104 平台 3／其他 1；手機待 Tim 目視（HQ ta-024），HQ inventory 暫為 deployed_unverified。詳 archive | Claude Code（HQ） | ⏳ |
 | 2026-10-06 | 【SYS-07】**近期內容排程重寫＋GA4 錯的備援移除**（tzlth-hq 組 H，Tim「執行」）：解析移至 `lib/content-calendar.ts`，依表頭取欄、續表沿用表頭、台北日期，改顯示平台不顯示狀態；今天 434 列誤顯示→37 列。詳 archive | 總部視窗 | ✅ |
 | 2026-10-03 | 【SYS-07】**說明書九章化反查（tzlth-hq RCF-187 第 7 份）**：部門清單 12→16、`github.ts` 舊註解、本檔技術架構／env 表 8→12 列（含 Config 型警示）＋讀取點維護觸發行。全文見 `CLAUDE-archive-2026-10.md` | tzlth-hq | ✅ |
