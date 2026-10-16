@@ -16,7 +16,7 @@
 - ⛔ **指令中心已於 2026-09-09 移除**（Tim 裁決：總部定位＝資訊集合體，不是問答介面）：本 repo 自此**無任何 LLM 依賴**，`@google/genai` 已 uninstall，儀表板隨之退出 tzlth-hq `批次:B5` 的 2026-10-16 Gemini 遷移母體。決策全文＝RCF-123 補記四；自由問答需求改由 LINE Bot「隨身總部包 B」承接（RCF-139 補記二）。
 
 ## Vercel 環境變數清單
-> 2026-10-03 依 `vercel env ls`（只看名稱）＋程式碼 `git grep process.env` 重建：Vercel 上 12 個名稱＝程式讀的 11 個＋已無消費者的 `GOOGLE_API_KEY`（另 `VERCEL_GIT_COMMIT_SHA`／`VERCEL_REGION` 為平台自帶）。原表漏 4 個（BASIC_AUTH ×2、BOOKING_STATS_KEY、FINANCE_SUMMARY_API_KEY）。⛔ 只記名稱、不記值（RCF-111）；憑證清冊 SoT＝tzlth-hq `security/security-log.md`。
+> 2026-10-03 依 `vercel env ls`（只看名稱）＋程式碼 `git grep process.env` 重建：Vercel 上 12 個名稱＝程式讀的 11 個＋已無消費者的 `GOOGLE_API_KEY`（**2026-10-16 Tim 已刪 ⇒ 現為 11 個**）（另 `VERCEL_GIT_COMMIT_SHA`／`VERCEL_REGION` 為平台自帶）。原表漏 4 個（BASIC_AUTH ×2、BOOKING_STATS_KEY、FINANCE_SUMMARY_API_KEY）。⛔ 只記名稱、不記值（RCF-111）；憑證清冊 SoT＝tzlth-hq `security/security-log.md`。
 > ⚠️ 型別：Vercel 2026-08-24 起分 **Config**（有專案權限者可在主控台／`vercel env pull` 讀回明文）與 **Secret**（存了就讀不回）。下表標「Config」的憑證類 5 個，改成 Secret 須刪除重加（只能用於正式／預覽環境），待 Tim 處理（tzlth-hq tasks P3）。
 
 | 變數名稱 | 用途 | 型別 |
@@ -30,7 +30,7 @@
 | LINE_CHANNEL_ACCESS_TOKEN | 主 OA 好友數（insight API） | Config ⚠️ |
 | BOOKING_STATS_URL / BOOKING_STATS_KEY | 預約後端 `/api/stats`（Bearer） | Config／Secret |
 | FINANCE_SUMMARY_API_KEY | 財務 `/api/summary`（Bearer，與財務 `SUMMARY_API_KEY` 同值異名） | Secret |
-| ~~GOOGLE_API_KEY~~ | ⛔ 2026-09-09 起零消費者（指令中心移除），刻意暫留；建議由 Tim 於 Vercel 刪除 | Config ⚠️ |
+| ~~GOOGLE_API_KEY~~ | 🗃️ **2026-10-16 已由 Tim 刪除**（09-09 起零消費者；總部 Claude 讀環境變數頁確認不在） | — |
 
 ---
 ## ⚡ 跨視窗同步協議（最高優先規則）
@@ -53,6 +53,7 @@
 
 | 日期 | 修改內容 | 執行視窗 | 狀態 |
 |------|---------|---------|------|
+| 2026-10-16 | 【SEC】**Vercel `GOOGLE_API_KEY` 刪除（總部 tasks L816）**：Tim 刪除、總部 Claude 讀環境變數頁確認；同日 GitHub repo 3 把孤兒 secrets 亦刪。本 repo 程式碼未動，只改本檔環境變數清單 | 總部視窗 | ✅ |
 | 2026-10-14 | 【DEV】**本機 build 閘＋推送後部署結果查詢（總部 L820，RCF-244）**：`.git/hooks/pre-push` 由總部安裝，沒有 build 記號就自動 build、失敗擋下；推完用總部 `deploy_status.py` 查部署結果。本 repo 程式碼未動。說明見部署段 🔒 行 | 總部視窗 | ✅ |
 | 2026-10-09 | 客戶頁來源標籤加 `PRG: 合作計劃`、`104: 104 平台`（`34dfc48`；HQ RCF-234）。桌機線上核對 46 位：合作計劃 14／104 平台 3／其他 1；手機待 Tim 目視（HQ ta-024），HQ inventory 暫為 deployed_unverified。詳 archive | Claude Code（HQ） | ⏳ |
 | 2026-10-06 | 【SYS-07】**近期內容排程重寫＋GA4 錯的備援移除**（tzlth-hq 組 H，Tim「執行」）：解析移至 `lib/content-calendar.ts`，依表頭取欄、續表沿用表頭、台北日期，改顯示平台不顯示狀態；今天 434 列誤顯示→37 列。詳 archive | 總部視窗 | ✅ |
