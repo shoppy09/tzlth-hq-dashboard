@@ -4,6 +4,7 @@
 
 | 日期 | 修改內容 | 執行視窗 | 狀態 |
 |------|---------|---------|------|
+| 2026-10-19 | 【DEV/SEC】**每日清單與 Tim 待辦勾選 API 跨站防護＋Next 16.2.6 → 16.3.8（HQ tasks 批次:B63「資安稽核 10-17 其餘修復」②③；Tim 查照 3 版後「都按照你的建議，執行」）**：新增 `lib/request-guard.ts`（照看板 10-18 `lib/request-guard.js`：帶 Origin 必須同源、只收 `application/json`、不帶 Origin 放行但仍要過 Basic）；兩支 POST 開頭呼叫（原本直接 `req.json()`、不看 Content-Type）。前端 `DailyChecklist`／`TimActions` 本來就送 JSON。本機 `next start`（臨時 Basic 帳密、假 GitHub token）：兩支各 跨站 403、text/plain 415、同站與無 Origin 送格式錯 → 400（通過檢查、寫入前就擋，未寫總部 repo）。lint 8 項皆在未改動檔 | 總部視窗 | ✅ |
 | 2026-10-14 | 【DEV】**本機 build 閘＋推送後部署結果查詢（總部 L820，RCF-244）**：`.git/hooks/pre-push` 由總部安裝，沒有 build 記號就自動 build、失敗擋下；推完用總部 `deploy_status.py` 查部署結果。本 repo 程式碼未動。說明見部署段 🔒 行 | 總部視窗 | ✅ |
 | 2026-10-09 | 客戶頁 `app/clients/page.tsx` 的 `SOURCE_LABEL` 加 `PRG: '合作計劃'`、`'104': '104 平台'`；`lib/crm.ts` source 註解同步（`34dfc48`）。背景：HQ client-log 新增兩個來源代號並統一「代號（說明）」寫法（HQ RCF-234）；改版前同類客戶被顯示成「104 履歷診療室」「104 人力銀行派案」「104」三種標籤。驗證：`npm run build` 通過；`/api/version`＝34dfc48；Chrome 讀 `/clients` 全文：累計 46、合作計劃 14、104 平台 3、其他 1。手機版沒測到（視窗縮放未生效、頁面不允許嵌入）⇒ 待 Tim 目視（HQ `dev/deploy-verify/SYS-07-2026-10-09-source-labels.md`、ta-024） | Claude Code（HQ） | ⏳ |
 | 2026-10-06 | 【SYS-07】**近期內容排程重寫＋GA4 錯的備援移除**（tzlth-hq tasks L107／L122，組 H，Tim「按照你的建議，執行」，4 版查照）：① 解析移至 `lib/content-calendar.ts`（純函式）：依表頭欄名取欄（舊版寫死位置＋`.filter(Boolean)` 丟空格子致錯位）、同一「## 」節內沿用最近表頭（FB／IG 表被說明文字切成多段，舊版後段整段讀不到）、日期接受 MM/DD（可帶星期）／MM-DD／YYYY-MM-DD 且認不出一律略過（舊版一律保留）、年份取離台北今天最近者（修跨年）、「今天」以 Asia/Taipei 計（伺服器為 UTC）、連結只放行 https 與相對草稿（補成 HQ GitHub 網址）。② 畫面：圖示與標籤改依平台（取自節標題），**不顯示狀態**——FB 狀態格實為備註、影片區狀態為 build 初值（影片週規劃 L173），顯示會誤導（Tim 裁 a）。③ `lib/ga4.ts` 拿掉 `GOOGLE_ANALYTICS_PROPERTY_ID` 備援（診斷 Property）；`WEBSITE_GA4_PROPERTY_ID` 三環境皆有設（`vercel env ls` 只看名稱與範圍）⇒ 行為不變；舊 env 程式碼已不讀，刪否由 Tim。④ `.gitattributes` 規則順序（`* text=auto` 移到 binary 前；本 repo 唯一二進位檔本已判 -text，無重新正規化）。驗證：編譯後實跑 24 項全過（真實檔 37 列＝官網 5／Threads 8／FB 8／IG 8／影片 8；日期 8 型、跨年 2、時區 1、合成續表／空格／換節／javascript: 連結）；改動 3 檔 eslint 0 錯誤、3 警告皆既有；build 通過、路由表同 10-03。 | 總部視窗 | ✅ |
@@ -11,3 +12,9 @@
 | 2026-10-01 | 【SYS-07】tzlth-hq 組 3＋19 L1106／L1105：`setChecklistKey`（比照 `setTimActionKey`）、route 參數驗證＋502、`DailyChecklist` 掛載後解析、週六日＋月底（25 日起）＋月初（1-5 日）、`段落-djb2` id、`<!-- ws: -->` 剝除、點過不被載入讀取覆蓋（`a22da4b`，線上驗證順查）；`parse-tasks` 收 `[~]`；刪 `page.tsx` 例行卡。驗證：本機 11 日期解析＋失敗路徑＋375 手機；線上勾選 `2f9bc2ad`／取消 `28c488f5`、回歸 ①～⑥。tzlth-hq `dev/deploy-verify/SYS-07-2026-10-01-daily-checklist.md` | tzlth-hq 組 3＋19 | ✅ |
 | 2026-04-13 | 新增指令中心（Gemini 2.0 Flash，6 預設指令）| 總部視窗 | ✅ |
 | 2026-04-17 | 補齊環境變數清單：新增 WEBSITE_GA4_PROPERTY_ID + BOOKING_STATS_URL；修正 GOOGLE_ANALYTICS_PROPERTY_ID 值（530451281→532491434）| 總部視窗 | ✅ |
+
+## 自主檔移出的舊列（2026-10-19；原文逐字）
+
+| 日期 | 修改內容 | 執行視窗 | 狀態 |
+|------|---------|---------|------|
+| 2026-07-02 | 收尾規則指針化（RCF-120 D6）：舊「收尾四/五件事」清單 → 總部 CLAUDE.md 收尾七件事指針式（部署特例保留在地）；消除與主檔的版本漂移 | 總部視窗 | ✅ |

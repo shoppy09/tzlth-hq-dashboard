@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { guard } from '@/lib/request-guard';
 import { getTimActionsState, setTimActionKey } from '@/lib/github';
 
 export async function GET() {
@@ -15,6 +16,9 @@ export async function GET() {
 const KEY_RE = /^ta-\d{3}(@\d{4}-\d{2})?$/;
 
 export async function POST(req: Request) {
+  // [2026-10-19 HQ 批次:B63] 跨站請求防護：同源＋只收 JSON（前端 fetch 本來就送 application/json）
+  const blocked = guard(req);
+  if (blocked) return blocked;
   let body: { key?: unknown; checked?: unknown };
   try {
     body = await req.json();

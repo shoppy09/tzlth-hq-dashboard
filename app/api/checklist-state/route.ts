@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { guard } from '@/lib/request-guard';
 import { getChecklistState, setChecklistKey } from '@/lib/github';
 
 export async function GET() {
@@ -17,6 +18,9 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const ID_RE = /^[a-z0-9]+-[a-z0-9]{1,16}$/;
 
 export async function POST(req: Request) {
+  // [2026-10-19 HQ 批次:B63] 跨站請求防護：同源＋只收 JSON（前端 fetch 本來就送 application/json）
+  const blocked = guard(req);
+  if (blocked) return blocked;
   let body: { date?: unknown; id?: unknown; checked?: unknown };
   try {
     body = await req.json();

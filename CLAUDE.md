@@ -53,6 +53,7 @@
 
 | 日期 | 修改內容 | 執行視窗 | 狀態 |
 |------|---------|---------|------|
+| 2026-10-19 | 【DEV/SEC】**兩支勾選 API 跨站防護＋Next 16.3.8（HQ 批次:B63）**：`lib/request-guard.ts`（同源＋只收 JSON），checklist-state／tim-actions-state POST 開頭呼叫；本機 403／415／格式錯 400 全過。詳 archive | 總部視窗 | ✅ |
 | 2026-10-16 | 【SEC】**Vercel `GOOGLE_API_KEY` 刪除（總部 tasks L816）**：Tim 刪除、總部 Claude 讀環境變數頁確認；同日 GitHub repo 3 把孤兒 secrets 亦刪。本 repo 程式碼未動，只改本檔環境變數清單 | 總部視窗 | ✅ |
 | 2026-10-14 | 【DEV】**本機 build 閘＋推送後部署結果查詢（總部 L820，RCF-244）**：`.git/hooks/pre-push` 由總部安裝，沒有 build 記號就自動 build、失敗擋下；推完用總部 `deploy_status.py` 查部署結果。本 repo 程式碼未動。說明見部署段 🔒 行 | 總部視窗 | ✅ |
 | 2026-10-09 | 客戶頁來源標籤加 `PRG: 合作計劃`、`104: 104 平台`（`34dfc48`；HQ RCF-234）。桌機線上核對 46 位：合作計劃 14／104 平台 3／其他 1；手機待 Tim 目視（HQ ta-024），HQ inventory 暫為 deployed_unverified。詳 archive | Claude Code（HQ） | ⏳ |
@@ -72,7 +73,6 @@
 | 2026-07-01 | （補登）RCF-118 B-pre：middleware.ts 全站 HTTP Basic Auth（fail-closed，commit cd9b2dd）；07-02 部署+curl 401 驗證 | 總部視窗 | ✅ |
 | 2026-06-01 | （補登）Gemini 指令中心 2.0-flash→2.5-flash 遷移（2.0 停用，commit 2383d1e→b354043）| 總部視窗 | ✅ |
 | 2026-05-24 | （補登）FinancePanel 整合（finance.careerssl.com/api/summary，FINANCE_SUMMARY_API_KEY）| 總部視窗 | ✅ |
-| 2026-07-02 | 收尾規則指針化（RCF-120 D6）：舊「收尾四/五件事」清單 → 總部 CLAUDE.md 收尾七件事指針式（部署特例保留在地）；消除與主檔的版本漂移 | 總部視窗 | ✅ |
 
 ---
 ## 總部連結（TZLTH-HQ）
